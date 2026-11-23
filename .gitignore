@@ -1,0 +1,10 @@
+.gradle/
+**/build/
+/build/
+/build-isolated/
+/.kotlin/
+/local.properties
+*.iml
+.idea/**
+!.idea/.gitignore
+.DS_Store
