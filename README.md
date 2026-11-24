@@ -10,6 +10,8 @@ Map settings also let a signed-in user choose a 1?100 km radius for nearby item 
 
 ## Run on a USB-connected Android device
 
+On Windows, connect one authorized Android device and double-click `build-and-launch.bat` to build, install, and open the app. For multiple connected devices, run `.\build-and-launch.bat -DeviceSerial <serial>` in Command Prompt or PowerShell.
+
 1. Start FastAPI from `backend/` with `.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload`.
 2. In another PowerShell window, run `adb reverse tcp:8001 tcp:8001`.
 3. Set `API_BASE_URL=http://127.0.0.1:8001/api/v1` in ignored `local.properties` and build the Android app.

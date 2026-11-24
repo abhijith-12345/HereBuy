@@ -64,7 +64,7 @@ This workbook is the file-by-file guide to the Android client, FastAPI service, 
 
 | File | Main types and functions | Purpose / change notes |
 | --- | --- | --- |
-| `backend/app/main.py` | `lifespan`, `health`, `app` | FastAPI setup, startup schema preparation, router mounting, and health route. |
+| `backend/app/main.py` | `lifespan`, `log_api_requests`, `health`, `app`; `api_logger` | FastAPI setup, startup schema preparation, router mounting, health route, and structured API request logging. Windows launch scripts route all output to the single `backend/logs/api.log` file. |
 | `backend/app/config.py` | `validate_settings`; environment constants | Loads `.env`, selects database URL, and checks required settings. |
 | `backend/app/database.py` | `Base`, `prepare_development_schema`, `get_db`; `engine`, `SessionLocal` | SQLAlchemy setup, compatibility adjustments for SQLite/PostgreSQL, and request-scoped sessions. |
 | `backend/app/dependencies.py` | `get_current_user` | Validates the bearer token and resolves the authenticated user. |

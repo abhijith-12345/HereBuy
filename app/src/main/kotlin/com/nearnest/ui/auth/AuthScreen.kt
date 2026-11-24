@@ -4,7 +4,6 @@
 package com.nearnest.ui.auth
 
 import android.app.Activity
-import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -44,24 +43,16 @@ class AuthScreen(
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(24), dp(28), dp(24), dp(28))
             background = GradientDrawable().apply {
-                setColor(Color.rgb(229, 240, 228))
+                setColor(Color.WHITE)
                 cornerRadius = 0f
             }
             elevation = 0f
         }
 
-        content.addView(TextView(activity).apply {
-            text = "NEIGHBORHOOD MARKETPLACE"
-            textSize = 11f
-            letterSpacing = 0.16f
-            setTextColor(Color.rgb(190, 135, 0))
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
 
         content.addView(TextView(activity).apply {
             text = "HereBuy"
-            textSize = 30f
+            textSize = 28f
             setTextColor(Color.rgb(15, 72, 45))
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
             gravity = Gravity.CENTER
@@ -86,6 +77,22 @@ class AuthScreen(
         )
         content.addView(passwordField(passwordInput), fieldLayout(top = 12))
 
+        content.addView(TextView(activity).apply {
+            text = "Forgot password?"
+            textSize = 15f
+            setTextColor(Color.rgb(20, 122, 67))
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Forgot password"
+            setOnClickListener {
+                Toast.makeText(activity, "Password reset is not available yet.", Toast.LENGTH_SHORT).show()
+            }
+        }, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(6)
+            bottomMargin = dp(2)
+        })
+
         statusText = TextView(activity).apply {
             textSize = 13f
             setTextColor(Color.rgb(73, 97, 78))
@@ -95,15 +102,21 @@ class AuthScreen(
 
         signInButton = Button(activity).apply {
             text = "Sign in"
+            isAllCaps = false
+            textSize = 16f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(Color.WHITE)
-            backgroundTintList = ColorStateList.valueOf(Color.rgb(20, 122, 67))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(20, 122, 67))
+                cornerRadius = dp(12).toFloat()
+            }
             setOnClickListener { submit() }
         }
         content.addView(signInButton, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(18) })
 
         content.addView(TextView(activity).apply {
             text = "────────  or continue with  ────────"
-            textSize = 12f
+            textSize = 13f
             setTextColor(Color.rgb(120, 137, 123))
             gravity = Gravity.CENTER
             setPadding(0, dp(16), 0, dp(4))
@@ -111,6 +124,8 @@ class AuthScreen(
         val socialRow = LinearLayout(activity).apply {
             gravity = Gravity.CENTER
             orientation = LinearLayout.HORIZONTAL
+            clipChildren = false
+            clipToPadding = false
         }
         listOf(
             "Google" to com.nearnest.R.drawable.ic_social_google,
@@ -118,10 +133,12 @@ class AuthScreen(
             "Apple" to com.nearnest.R.drawable.ic_social_apple
         ).forEach { (provider, iconRes) ->
             val chip = FrameLayout(activity).apply {
+                clipChildren = false
+                clipToPadding = false
                 background = GradientDrawable().apply {
                     shape = GradientDrawable.OVAL
-                    setColor(Color.rgb(247, 250, 246))
-                    setStroke(dp(1), Color.rgb(210, 226, 211))
+                    setColor(Color.WHITE)
+                    setStroke(dp(1), Color.rgb(218, 226, 220))
                 }
                 contentDescription = "Continue with $provider"
                 isClickable = true
@@ -131,25 +148,37 @@ class AuthScreen(
                     setImageResource(iconRes)
                     contentDescription = null
                     scaleType = ImageView.ScaleType.FIT_CENTER
-                }, FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER))
+                }, FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER))
             }
-            socialRow.addView(chip, LinearLayout.LayoutParams(dp(50), dp(50)).apply {
-                setMargins(dp(10), dp(6), dp(10), 0)
+            socialRow.addView(chip, LinearLayout.LayoutParams(dp(52), dp(52)).apply {
+                setMargins(dp(10), dp(6), dp(10), dp(10))
             })
         }
         content.addView(socialRow, LinearLayout.LayoutParams(-1, -2))
-        content.addView(TextView(activity).apply {
-            text = "New to HereBuy?  Create account"
-            textSize = 15f
-            setTextColor(Color.rgb(20, 122, 67))
+        content.addView(LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setPadding(0, dp(18), 0, dp(8))
-            setOnClickListener { onCreateAccount() }
+            addView(TextView(activity).apply {
+                text = "New to HereBuy?"
+                textSize = 15f
+                setTextColor(Color.rgb(91, 111, 96))
+            })
+            addView(TextView(activity).apply {
+                text = "Create account"
+                textSize = 15f
+                setTextColor(Color.rgb(20, 122, 67))
+                isClickable = true
+                isFocusable = true
+                contentDescription = "Create account"
+                setPadding(dp(5), 0, 0, 0)
+                setOnClickListener { onCreateAccount() }
+            })
         }, LinearLayout.LayoutParams(-1, -2))
 
         return ScrollView(activity).apply {
             isFillViewport = true
-            setBackgroundColor(Color.rgb(229, 240, 228))
+            setBackgroundColor(Color.WHITE)
             isVerticalScrollBarEnabled = false
             addView(FrameLayout(activity).apply {
                 foregroundGravity = Gravity.CENTER
@@ -193,6 +222,7 @@ class AuthScreen(
         setTextColor(Color.rgb(35, 49, 39))
         setHintTextColor(Color.rgb(124, 145, 128))
         inputType = inputTypeValue
+        typeface = Typeface.create("sans-serif", Typeface.NORMAL)
         setSingleLine(true)
         setPadding(dp(14), 0, dp(14), 0)
         background = GradientDrawable().apply {
@@ -212,7 +242,8 @@ class AuthScreen(
             scaleType = ImageView.ScaleType.CENTER
             setPadding(dp(12), dp(12), dp(12), dp(12))
             setOnClickListener {
-                val visible = input.inputType and InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD != 0
+                val visible = input.inputType and InputType.TYPE_MASK_VARIATION ==
+                    InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
                 input.inputType = InputType.TYPE_CLASS_TEXT or if (visible) InputType.TYPE_TEXT_VARIATION_PASSWORD else InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
                 setImageResource(if (visible) com.nearnest.R.drawable.ic_password_hidden else com.nearnest.R.drawable.ic_password_visible)
                 contentDescription = if (visible) "Show password" else "Hide password"

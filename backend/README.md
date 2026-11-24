@@ -16,7 +16,7 @@ This workstation's `FestieNgrok` Windows service forwards the reserved HTTPS dom
 
 ## Keep the backend running on Windows
 
-The `HereBuy FastAPI Backend` Task Scheduler task starts the backend at Windows boot under the built-in `SYSTEM` account. A supervisor restarts Uvicorn if it exits. To register or refresh the task from an elevated PowerShell window, run `.\install-startup-task.ps1`. Logs are written to `backend\logs\backend.log` and per-run Uvicorn log files. The API listens on `127.0.0.1:8001` for local development and ngrok forwarding. The existing `FestieNgrok` Windows service is also configured to start at boot and forwards the app's public HTTPS URL to this port.
+The `HereBuy FastAPI Backend` Task Scheduler task starts the backend at Windows boot under the built-in `SYSTEM` account. A supervisor restarts Uvicorn if it exits. To register or refresh the task from an elevated PowerShell window, run `.\install-startup-task.ps1`. API requests and backend process output are appended to the single file `backend\logs\api.log`; the supervisor clears that same file if it grows beyond 10 MB rather than creating rotated logs. The API listens on `127.0.0.1:8001` for local development and ngrok forwarding. The existing `FestieNgrok` Windows service is also configured to start at boot and forwards the app's public HTTPS URL to this port.
 
 Check the task with `Get-ScheduledTask -TaskName 'HereBuy FastAPI Backend'`. Use `Start-ScheduledTask` or `Stop-ScheduledTask` with that task name to control it.
 

@@ -4,7 +4,6 @@
 package com.nearnest.ui.auth
 
 import android.app.Activity
-import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -32,7 +31,7 @@ class SignupOtpScreen(
 ) {
     private lateinit var codeInput: EditText
     private lateinit var verifyButton: Button
-    private lateinit var resendButton: Button
+    private lateinit var resendButton: TextView
     private lateinit var statusText: TextView
 
     /** Builds and returns this component's Android view hierarchy. */
@@ -40,36 +39,36 @@ class SignupOtpScreen(
         val content = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(24), dp(30), dp(24), dp(24))
+            setPadding(dp(24), dp(28), dp(24), dp(28))
             background = GradientDrawable().apply {
                 setColor(Color.WHITE)
-                cornerRadius = dp(22).toFloat()
-                setStroke(dp(1), Color.rgb(215, 230, 216))
+                cornerRadius = 0f
             }
-            elevation = dp(4).toFloat()
+            elevation = 0f
         }
+
         content.addView(TextView(activity).apply {
-            text = "Verify your email"
-            textSize = 26f
+            text = "HereBuy"
+            textSize = 28f
             setTextColor(Color.rgb(15, 72, 45))
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(-1, -2))
         content.addView(TextView(activity).apply {
-            text = "Enter the 6-digit code sent to\n$email"
+            text = "Verify your email to finish creating your account.\nCode sent to $email"
             textSize = 15f
             setTextColor(Color.rgb(91, 111, 96))
             gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
 
         codeInput = EditText(activity).apply {
             hint = "6-digit code"
-            textSize = 22f
+            textSize = 16f
             gravity = Gravity.CENTER
-            letterSpacing = 0.24f
             setTextColor(Color.rgb(35, 49, 39))
             setHintTextColor(Color.rgb(124, 145, 128))
             inputType = InputType.TYPE_CLASS_NUMBER
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
             filters = arrayOf(InputFilter.LengthFilter(6))
             setSingleLine(true)
             setPadding(dp(14), 0, dp(14), 0)
@@ -79,7 +78,7 @@ class SignupOtpScreen(
                 setStroke(dp(1), Color.rgb(210, 226, 211))
             }
         }
-        content.addView(codeInput, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(26) })
+        content.addView(codeInput, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(28) })
 
         statusText = TextView(activity).apply {
             textSize = 13f
@@ -90,38 +89,60 @@ class SignupOtpScreen(
 
         verifyButton = Button(activity).apply {
             text = "Verify and create account"
+            isAllCaps = false
+            textSize = 16f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(Color.WHITE)
-            backgroundTintList = ColorStateList.valueOf(Color.rgb(20, 122, 67))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(20, 122, 67))
+                cornerRadius = dp(12).toFloat()
+            }
             setOnClickListener { verify() }
         }
-        content.addView(verifyButton, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(16) })
-        resendButton = Button(activity).apply {
+        content.addView(verifyButton, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(18) })
+        resendButton = TextView(activity).apply {
             text = "Resend code"
+            textSize = 15f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(Color.rgb(20, 122, 67))
-            backgroundTintList = ColorStateList.valueOf(Color.rgb(232, 245, 235))
+            gravity = Gravity.CENTER
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Resend verification code"
             setOnClickListener { resend() }
         }
-        content.addView(resendButton, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
+        content.addView(resendButton, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(14)
+            bottomMargin = dp(4)
+        })
         content.addView(TextView(activity).apply {
             text = "Back to signup"
             textSize = 15f
-            setTextColor(Color.rgb(20, 122, 67))
+            setTextColor(Color.rgb(91, 111, 96))
             gravity = Gravity.CENTER
-            setPadding(0, dp(14), 0, dp(4))
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Back to signup"
+            setPadding(0, dp(8), 0, dp(4))
             setOnClickListener { onBack() }
         }, LinearLayout.LayoutParams(-1, -2))
 
         return ScrollView(activity).apply {
             isFillViewport = true
-            setBackgroundColor(Color.rgb(241, 247, 241))
+            setBackgroundColor(Color.WHITE)
             isVerticalScrollBarEnabled = false
-            addView(content, FrameLayout.LayoutParams(-1, -2).apply {
-                gravity = Gravity.CENTER
-                marginStart = dp(20)
-                marginEnd = dp(20)
+            addView(FrameLayout(activity).apply {
+                foregroundGravity = Gravity.CENTER
+                addView(content, FrameLayout.LayoutParams(
+                    dp((resources.displayMetrics.widthPixels / resources.displayMetrics.density).toInt() - 40)
+                        .coerceAtMost(dp(480)),
+                    -2,
+                    Gravity.CENTER
+                ).apply {
                 topMargin = dp(24)
                 bottomMargin = dp(24)
-            })
+                })
+            }, FrameLayout.LayoutParams(-1, -1))
         }
     }
 
