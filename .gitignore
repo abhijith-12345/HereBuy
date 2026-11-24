@@ -32,3 +32,4 @@ backend/data/*.db-*
 *.iso
 *.zip
 *.7z
+*.blend1

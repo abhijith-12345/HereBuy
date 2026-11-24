@@ -45,6 +45,7 @@ class SignupScreen(
     private lateinit var confirmPasswordInput: EditText
     private lateinit var submitButton: Button
     private lateinit var statusText: TextView
+    private var pendingConfirmScroll: Runnable? = null
 
     /** Builds and returns this component's Android view hierarchy. */
     fun createView(): View {
@@ -225,9 +226,8 @@ class SignupScreen(
             }, FrameLayout.LayoutParams(-1, -2))
         }
         confirmPasswordInput.setOnFocusChangeListener { focusedView, hasFocus ->
-            if (hasFocus) scrollView.postDelayed({
-                scrollFocusedFieldIntoViewIfCovered(scrollView, focusedView)
-            }, FOCUS_SCROLL_DELAY_MS)
+            if (hasFocus) scheduleConfirmPasswordScroll(scrollView, focusedView)
+            else cancelPendingConfirmScroll(scrollView)
         }
         scrollView.setOnApplyWindowInsetsListener { view, insets ->
             val imeBottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -240,9 +240,7 @@ class SignupScreen(
                 isFieldCoveredByKeyboard(view as ScrollView, confirmPasswordInput)
             view.setPadding(0, 0, 0, if (confirmPasswordCovered) imeBottom + dp(16) else 0)
             if (confirmPasswordCovered) {
-                view.post {
-                    scrollFocusedFieldIntoViewIfCovered(view, confirmPasswordInput)
-                }
+                scheduleConfirmPasswordScroll(view as ScrollView, confirmPasswordInput)
             }
             insets
         }
@@ -336,6 +334,25 @@ class SignupScreen(
         }
     }
 
+    /** Debounces keyboard and focus callbacks before smoothly revealing a covered confirm field. */
+    private fun scheduleConfirmPasswordScroll(scrollView: ScrollView, focusedView: View) {
+        cancelPendingConfirmScroll(scrollView)
+        val pending = Runnable {
+            pendingConfirmScroll = null
+            if (activity.currentFocus === confirmPasswordInput) {
+                scrollFocusedFieldIntoViewIfCovered(scrollView, focusedView)
+            }
+        }
+        pendingConfirmScroll = pending
+        scrollView.postDelayed(pending, FOCUS_SCROLL_DELAY_MS)
+    }
+
+    /** Cancels a scheduled confirm-password reveal after focus or keyboard state changes. */
+    private fun cancelPendingConfirmScroll(scrollView: ScrollView) {
+        pendingConfirmScroll?.let(scrollView::removeCallbacks)
+        pendingConfirmScroll = null
+    }
+
     /** Checks whether the keyboard overlaps the bottom of the focused input. */
     private fun isFieldCoveredByKeyboard(scrollView: ScrollView, focusedView: View): Boolean {
         if (!focusedView.isShown || focusedView.width == 0 || focusedView.height == 0) return false
@@ -355,15 +372,15 @@ class SignupScreen(
         /** Allows child-driven scrolling only while the covered confirm-password field has focus. */
         override fun requestChildRectangleOnScreen(child: View, rectangle: Rect, immediate: Boolean): Boolean {
             if (!shouldScrollForConfirmPassword()) return false
-            return super.requestChildRectangleOnScreen(child, rectangle, immediate)
+            val childRectangle = Rect(rectangle)
+            offsetDescendantRectToMyCoords(child, childRectangle)
+            val scrollDelta = computeScrollDeltaToGetChildRectOnScreen(childRectangle)
+            if (scrollDelta != 0) smoothScrollBy(0, scrollDelta)
+            return true
         }
 
-        /** Prevents automatic viewport-resize scrolling for username, email, and password inputs. */
-        override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
-            if (shouldScrollForConfirmPassword()) {
-                super.onSizeChanged(width, height, oldWidth, oldHeight)
-            }
-        }
+        /** Prevents resize-triggered jumps; the covered confirm field is smoothly revealed separately. */
+        override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) = Unit
 
         /** Reports whether keyboard visibility and focus permit confirm-password scrolling. */
         private fun shouldScrollForConfirmPassword(): Boolean =

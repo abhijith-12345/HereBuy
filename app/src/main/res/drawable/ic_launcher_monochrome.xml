@@ -1,3 +1,3 @@
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:drawable="@drawable/eco_home_location_pin"
+    android:drawable="@drawable/herebuy_market_tote"
     android:inset="8dp" />

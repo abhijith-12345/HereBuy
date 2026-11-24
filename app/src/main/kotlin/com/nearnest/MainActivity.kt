@@ -5,10 +5,16 @@ package com.nearnest
 
 import android.app.Activity
 import android.graphics.Color
+import android.graphics.Canvas
+import android.graphics.Movie
 import android.os.Bundle
 import android.os.Build
+import android.os.SystemClock
 import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
@@ -24,6 +30,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Coordinates app startup, authentication, lifecycle, and navigation back handling. */
@@ -31,6 +38,7 @@ import kotlinx.coroutines.launch
 class MainActivity : Activity() {
     private val mainScope: CoroutineScope = MainScope()
     private var homeScreen: HomeScreen? = null
+    private var startupOverlay: View? = null
     private var hasStarted = false
     private var hasResumed = false
     private var pendingSavedState: Bundle? = null
@@ -55,16 +63,22 @@ class MainActivity : Activity() {
             return
         }
 
-        showMessage("Connecting to HereBuy API...")
+        val startupStartedAt = SystemClock.elapsedRealtime()
+        showStartupLoading()
         mainScope.launch(Dispatchers.Main) {
             val authRepository = AuthRepository(this@MainActivity)
             if (!authRepository.hasSession()) {
+                keepStartupVisible(startupStartedAt)
                 showAuthScreen()
                 return@launch
             }
             try {
-                showHomeScreen(authRepository.fetchCurrentUser())
+                val user = authRepository.fetchCurrentUser()
+                showHomeScreen(user, keepStartupLoading = true)
+                keepStartupVisible(startupStartedAt)
+                hideStartupLoading()
             } catch (error: Exception) {
+                keepStartupVisible(startupStartedAt)
                 if (error is ApiException && error.statusCode == 401) {
                     authRepository.signOut()
                     showAuthScreen("Your session expired. Please sign in again.")
@@ -75,8 +89,76 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Lets the three-second startup animation finish at least once before transitioning. */
+    private suspend fun keepStartupVisible(startedAt: Long) {
+        val remaining = 3_000L - (SystemClock.elapsedRealtime() - startedAt)
+        if (remaining > 0) delay(remaining)
+    }
+
+    /** Shows the Blender-rendered, looping HereBuy market-tote logo during startup. */
+    private fun showStartupLoading() {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(28), dp(8), dp(28), dp(8))
+        }
+        content.addView(TextView(this).apply {
+            text = "HereBuy"
+            textSize = 27f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(Color.rgb(25, 75, 48))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(2) })
+        content.addView(TextView(this).apply {
+            text = "Getting your neighborhood ready"
+            textSize = 14f
+            setTextColor(Color.rgb(91, 112, 98))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8) })
+        val overlay = FrameLayout(this).apply {
+            setBackgroundColor(Color.rgb(241, 247, 241))
+            addView(StartupAnimationView(this@MainActivity), FrameLayout.LayoutParams(-1, -1))
+            addView(content, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+                bottomMargin = dp(88)
+            })
+        }
+        startupOverlay = overlay
+        setContentView(overlay)
+    }
+
+    /** Removes the startup layer after the initial API and home-screen setup have had time to run. */
+    private fun hideStartupLoading() {
+        val overlay = startupOverlay ?: return
+        (overlay.parent as? ViewGroup)?.removeView(overlay)
+        startupOverlay = null
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    /** Decodes and continuously draws the lightweight looping GIF rendered from Blender. */
+    private class StartupAnimationView(activity: Activity) : View(activity) {
+        private val movie = Movie.decodeStream(activity.resources.openRawResource(R.raw.startup_animation))
+        private val startedAt = SystemClock.uptimeMillis()
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val duration = movie.duration().coerceAtLeast(1)
+            movie.setTime(((SystemClock.uptimeMillis() - startedAt) % duration).toInt())
+            val scale = minOf(width.toFloat() / movie.width(), height.toFloat() / movie.height())
+            val left = (width - movie.width() * scale) / 2f
+            val top = (height - movie.height() * scale) / 2f
+            canvas.save()
+            canvas.translate(left, top)
+            canvas.scale(scale, scale)
+            movie.draw(canvas, 0f, 0f)
+            canvas.restore()
+            postInvalidateOnAnimation()
+        }
+    }
+
     /** Displays the sign-in screen and optional authentication message. */
     private fun showAuthScreen(message: String? = null) {
+        startupOverlay = null
         authBackAction = null
         val authRepository = AuthRepository(this)
         val authScreen = AuthScreen(this, onCreateAccount = { showSignupScreen() }) { identifier, password, onResult ->
@@ -148,7 +230,7 @@ class MainActivity : Activity() {
     }
 
     /** Creates and displays the authenticated home screen. */
-    private fun showHomeScreen(currentUser: ApiUser) {
+    private fun showHomeScreen(currentUser: ApiUser, keepStartupLoading: Boolean = false) {
         authBackAction = null
         val screen = HomeScreen(this, currentUser, onSignOut = {
             mainScope.launch(Dispatchers.Main) {
@@ -163,7 +245,19 @@ class MainActivity : Activity() {
             }
         })
         homeScreen = screen
-        setContentView(screen.createView(pendingSavedState))
+        val homeView = screen.createView(pendingSavedState)
+        if (keepStartupLoading) {
+            val container = FrameLayout(this)
+            container.addView(homeView, FrameLayout.LayoutParams(-1, -1))
+            startupOverlay?.let { overlay ->
+                (overlay.parent as? ViewGroup)?.removeView(overlay)
+                container.addView(overlay, FrameLayout.LayoutParams(-1, -1))
+            }
+            setContentView(container)
+        } else {
+            startupOverlay = null
+            setContentView(homeView)
+        }
         pendingSavedState = null
         if (hasStarted) screen.onStart()
         if (hasResumed) screen.onResume()
@@ -171,6 +265,7 @@ class MainActivity : Activity() {
 
     /** Displays a user-facing status or form validation message. */
     private fun showMessage(message: String) {
+        startupOverlay = null
         val text = TextView(this).apply {
             text = message
             textSize = 15f
