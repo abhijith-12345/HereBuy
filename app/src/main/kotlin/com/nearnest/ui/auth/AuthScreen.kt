@@ -17,17 +17,16 @@ import android.widget.TextView
 
 class AuthScreen(
     private val activity: Activity,
-    private val onSubmit: (
-        email: String,
+    private val onCreateAccount: () -> Unit,
+    private val onSignIn: (
+        identifier: String,
         password: String,
-        createAccount: Boolean,
         onResult: (message: String, isError: Boolean) -> Unit
     ) -> Unit
 ) {
-    private lateinit var emailInput: EditText
+    private lateinit var identifierInput: EditText
     private lateinit var passwordInput: EditText
     private lateinit var signInButton: Button
-    private lateinit var signUpButton: Button
     private lateinit var statusText: TextView
 
     fun createView(): View {
@@ -52,16 +51,22 @@ class AuthScreen(
         }, LinearLayout.LayoutParams(-1, -2))
 
         content.addView(TextView(activity).apply {
-            text = "Find good things close to home."
+            text = "Sign in to find good things close to home."
             textSize = 15f
             setTextColor(Color.rgb(95, 111, 126))
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
 
-        emailInput = inputField("Email", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
-        content.addView(emailInput, fieldLayout(top = 28))
+        identifierInput = inputField(
+            "Phone number or email",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+        )
+        content.addView(identifierInput, fieldLayout(top = 28))
 
-        passwordInput = inputField("Password", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        passwordInput = inputField(
+            "Password",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        )
         content.addView(passwordInput, fieldLayout(top = 12))
 
         statusText = TextView(activity).apply {
@@ -75,17 +80,18 @@ class AuthScreen(
             text = "Sign in"
             setTextColor(Color.WHITE)
             backgroundTintList = ColorStateList.valueOf(Color.rgb(22, 119, 210))
-            setOnClickListener { submit(createAccount = false) }
+            setOnClickListener { submit() }
         }
         content.addView(signInButton, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(18) })
 
-        signUpButton = Button(activity).apply {
-            text = "Create account"
-            setTextColor(Color.rgb(24, 136, 94))
-            backgroundTintList = ColorStateList.valueOf(Color.rgb(231, 247, 239))
-            setOnClickListener { submit(createAccount = true) }
-        }
-        content.addView(signUpButton, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
+        content.addView(TextView(activity).apply {
+            text = "New to HereBuy?  Create account"
+            textSize = 15f
+            setTextColor(Color.rgb(22, 119, 210))
+            gravity = Gravity.CENTER
+            setPadding(0, dp(18), 0, dp(8))
+            setOnClickListener { onCreateAccount() }
+        }, LinearLayout.LayoutParams(-1, -2))
 
         return ScrollView(activity).apply {
             isFillViewport = true
@@ -98,6 +104,25 @@ class AuthScreen(
                 topMargin = dp(24)
                 bottomMargin = dp(24)
             })
+        }
+    }
+
+    private fun submit() {
+        val identifier = identifierInput.text.toString().trim()
+        val password = passwordInput.text.toString()
+        val isEmail = identifier.contains('@') && identifier.matches(
+            Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
+        )
+        val isPhone = identifier.matches(Regex("^\\+[1-9]\\d{7,14}$"))
+        if (!isEmail && !isPhone) {
+            return showMessage("Enter a valid email or phone number with country code.", true)
+        }
+        if (password.length < 8) return showMessage("Password must be at least 8 characters.", true)
+
+        setLoading(true)
+        onSignIn(identifier, password) { message, isError ->
+            setLoading(false)
+            showMessage(message, isError)
         }
     }
 
@@ -120,38 +145,17 @@ class AuthScreen(
         topMargin = dp(top)
     }
 
-    private fun submit(createAccount: Boolean) {
-        val email = emailInput.text.toString().trim()
-        val password = passwordInput.text.toString()
-        if (!email.contains('@')) {
-            showMessage("Enter a valid email address.", isError = true)
-            return
-        }
-        if (password.length < 8) {
-            showMessage("Password must be at least 8 characters.", isError = true)
-            return
-        }
-
-        setLoading(true)
-        onSubmit(email, password, createAccount) { message, isError ->
-            setLoading(false)
-            showMessage(message, isError)
-        }
-    }
-
     private fun setLoading(loading: Boolean) {
         signInButton.isEnabled = !loading
-        signUpButton.isEnabled = !loading
-        emailInput.isEnabled = !loading
+        identifierInput.isEnabled = !loading
         passwordInput.isEnabled = !loading
-        if (loading) showMessage("Connecting…", isError = false)
+        signInButton.text = if (loading) "Signing in..." else "Sign in"
+        if (loading) showMessage("Connecting to HereBuy API...", false)
     }
 
     fun showMessage(message: String, isError: Boolean = false) {
         statusText.text = message
-        statusText.setTextColor(
-            if (isError) Color.rgb(179, 49, 49) else Color.rgb(74, 95, 112)
-        )
+        statusText.setTextColor(if (isError) Color.rgb(179, 49, 49) else Color.rgb(74, 95, 112))
         statusText.visibility = View.VISIBLE
     }
 

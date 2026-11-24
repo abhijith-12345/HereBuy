@@ -15,11 +15,11 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.nearnest.BuildConfig
-import com.nearnest.data.remote.SupabaseClientProvider
-import io.github.jan.supabase.auth.auth
+import com.nearnest.data.remote.ApiUser
 
 class ProfileScreen(
     private val activity: Activity,
+    private val currentUser: ApiUser,
     private val onSignOut: () -> Unit
 ) {
     private lateinit var emailText: TextView
@@ -68,8 +68,8 @@ class ProfileScreen(
 
     fun refresh() {
         if (!::emailText.isInitialized) return
-        emailText.text = SupabaseClientProvider.client.auth.currentUserOrNull()?.email
-            ?: "Signed-in account"
+        val accountDetails = listOfNotNull(currentUser.email, currentUser.phoneNumber).joinToString("\n")
+        emailText.text = "${currentUser.username ?: currentUser.displayName}\n$accountDetails"
     }
 
     private fun accountCard(): View {

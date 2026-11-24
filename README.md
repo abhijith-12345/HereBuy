@@ -1,9 +1,13 @@
 # HereBuy
 
-Native Android application scaffold for the HereBuy neighbourhood marketplace.
+HereBuy is a native Android neighbourhood marketplace. The Android app uses MapLibre for maps and the FastAPI service in `backend/` for authentication and listing data. Supabase is not used by the Android app.
 
-## Open in Android Studio
+## Run on a USB-connected Android device
 
-Open this folder as a project and allow Gradle sync to download the Android Gradle Plugin and dependencies. The app uses Kotlin, Android Gradle Plugin 8.13.2, compile/target SDK 36, and minimum SDK 24.
+1. Start FastAPI from `backend/` with `.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload`.
+2. In another PowerShell window, run `adb reverse tcp:8001 tcp:8001`.
+3. Set `API_BASE_URL=http://127.0.0.1:8001/api/v1` in ignored `local.properties` and build the Android app.
 
-The current launch screen is a small placeholder. MapLibre, Supabase, navigation, and marketplace screens will be added as the prototype is built.
+For an Android emulator, use `http://10.0.2.2:8001/api/v1`. For a phone without USB port forwarding, run `ngrok http 8001` and use the HTTPS forwarding address followed by `/api/v1` as `API_BASE_URL`.
+
+The Android sign-in screen accepts a phone number or email and password. Passwords are hashed by the API; authenticated app requests carry a signed bearer JWT.

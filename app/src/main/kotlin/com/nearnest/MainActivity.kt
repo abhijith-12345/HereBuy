@@ -1,17 +1,19 @@
 package com.nearnest
 
 import android.app.Activity
-import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
 import android.widget.FrameLayout
 import android.widget.TextView
+import com.nearnest.data.remote.ApiClientProvider
+import com.nearnest.data.remote.ApiException
+import com.nearnest.data.remote.ApiUser
 import com.nearnest.data.remote.AuthRepository
-import com.nearnest.data.remote.SupabaseClientProvider
 import com.nearnest.ui.auth.AuthScreen
+import com.nearnest.ui.auth.SignupScreen
+import com.nearnest.ui.auth.SignupOtpScreen
 import com.nearnest.ui.home.HomeScreen
-import io.github.jan.supabase.auth.handleDeeplinks
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
@@ -29,44 +31,37 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         pendingSavedState = savedInstanceState
 
-        if (!SupabaseClientProvider.isConfigured) {
-            showMessage(
-                "Add SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY to local.properties, then rebuild the app."
-            )
+        if (!ApiClientProvider.isConfigured) {
+            showMessage("Set API_BASE_URL in local.properties, then rebuild the app.")
             return
         }
 
-        if (handleAuthDeepLink(intent)) return
-
-        showMessage("Connecting to HereBuy…")
+        showMessage("Connecting to HereBuy API...")
         mainScope.launch(Dispatchers.Main) {
+            val authRepository = AuthRepository(this@MainActivity)
+            if (!authRepository.hasSession()) {
+                showAuthScreen()
+                return@launch
+            }
             try {
-                if (AuthRepository().hasSession()) {
-                    showHomeScreen()
-                } else {
-                    showAuthScreen()
-                }
+                showHomeScreen(authRepository.fetchCurrentUser())
             } catch (error: Exception) {
-                showMessage("Could not connect to Supabase: ${error.localizedMessage ?: "Unknown error"}")
+                if (error is ApiException && error.statusCode == 401) {
+                    authRepository.signOut()
+                    showAuthScreen("Your session expired. Please sign in again.")
+                } else {
+                    showMessage("Could not connect to HereBuy API: ${error.localizedMessage ?: "Unknown error"}")
+                }
             }
         }
     }
 
     private fun showAuthScreen(message: String? = null) {
-        val authScreen = AuthScreen(this) { email, password, createAccount, onResult ->
+        val authRepository = AuthRepository(this)
+        val authScreen = AuthScreen(this, onCreateAccount = { showSignupScreen() }) { identifier, password, onResult ->
             mainScope.launch(Dispatchers.Main) {
                 try {
-                    val authRepository = AuthRepository()
-                    if (createAccount) {
-                        if (authRepository.signUp(email, password)) {
-                            showHomeScreen()
-                        } else {
-                            onResult("Account created. Check your email to confirm, then sign in.", false)
-                        }
-                    } else {
-                        authRepository.signIn(email, password)
-                        showHomeScreen()
-                    }
+                    showHomeScreen(authRepository.signIn(identifier, password))
                 } catch (error: Exception) {
                     onResult(error.localizedMessage ?: "Sign-in failed. Please try again.", true)
                 }
@@ -76,41 +71,68 @@ class MainActivity : Activity() {
         message?.let { authScreen.showMessage(it, isError = true) }
     }
 
-    private fun handleAuthDeepLink(callbackIntent: Intent): Boolean {
-        val callbackUri = callbackIntent.data ?: return false
-        if (callbackUri.scheme != SupabaseClientProvider.AUTH_REDIRECT_SCHEME ||
-            callbackUri.host != SupabaseClientProvider.AUTH_REDIRECT_HOST
-        ) {
-            return false
-        }
-
-        SupabaseClientProvider.client.handleDeeplinks(
-            intent = callbackIntent,
-            onSessionSuccess = {
-                runOnUiThread { showHomeScreen() }
-            },
-            onError = { error ->
-                runOnUiThread { showAuthScreen(error.localizedMessage ?: "Email confirmation failed.") }
+    private fun showSignupScreen() {
+        val repository = AuthRepository(this)
+        val screen = SignupScreen(
+            activity = this,
+            onBackToSignIn = { showAuthScreen() },
+            onOtpSent = { challengeId, email -> showSignupOtpScreen(challengeId, email) },
+            onStartSignup = { username, email, password, onResult ->
+                mainScope.launch(Dispatchers.Main) {
+                    try {
+                        val response = repository.beginSignup(username, email, password)
+                        onResult(response, response.message, false)
+                    } catch (error: Exception) {
+                        onResult(null, error.localizedMessage ?: "Could not start signup. Please try again.", true)
+                    }
+                }
             }
         )
-        return true
+        setContentView(screen.createView())
     }
 
-    private fun showHomeScreen() {
-        val screen = HomeScreen(this, onSignOut = {
-            mainScope.launch(Dispatchers.Main) {
-                try {
-                    AuthRepository().signOut()
-                    homeScreen?.let { previous ->
-                        if (hasResumed) previous.onPause()
-                        if (hasStarted) previous.onStop()
-                        previous.onDestroy()
+    private fun showSignupOtpScreen(challengeId: String, email: String) {
+        val repository = AuthRepository(this)
+        val screen = SignupOtpScreen(
+            activity = this,
+            email = email,
+            onBack = { showSignupScreen() },
+            onVerify = { code, onResult ->
+                mainScope.launch(Dispatchers.Main) {
+                    try {
+                        val user = repository.verifySignup(challengeId, code)
+                        showHomeScreen(user)
+                        onResult(user, "", false)
+                    } catch (error: Exception) {
+                        onResult(null, error.localizedMessage ?: "Code verification failed. Please try again.", true)
                     }
-                    homeScreen = null
-                    showAuthScreen()
-                } catch (error: Exception) {
-                    showMessage("Could not sign out: ${error.localizedMessage ?: "Unknown error"}")
                 }
+            },
+            onResend = { onResult ->
+                mainScope.launch(Dispatchers.Main) {
+                    try {
+                        val response = repository.resendSignupCode(challengeId)
+                        onResult(response, response.message, false)
+                    } catch (error: Exception) {
+                        onResult(null, error.localizedMessage ?: "Could not resend the code.", true)
+                    }
+                }
+            }
+        )
+        setContentView(screen.createView())
+    }
+
+    private fun showHomeScreen(currentUser: ApiUser) {
+        val screen = HomeScreen(this, currentUser, onSignOut = {
+            mainScope.launch(Dispatchers.Main) {
+                AuthRepository(this@MainActivity).signOut()
+                homeScreen?.let { previous ->
+                    if (hasResumed) previous.onPause()
+                    if (hasStarted) previous.onStop()
+                    previous.onDestroy()
+                }
+                homeScreen = null
+                showAuthScreen()
             }
         })
         homeScreen = screen
@@ -147,12 +169,6 @@ class MainActivity : Activity() {
         homeScreen?.onResume()
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleAuthDeepLink(intent)
-    }
-
     override fun onPause() {
         hasResumed = false
         homeScreen?.onPause()
@@ -181,7 +197,7 @@ class MainActivity : Activity() {
         homeScreen?.onSaveInstanceState(outState)
     }
 
-    @Deprecated("Deprecated in Android, retained for runtime permission callback compatibility")
+    @Deprecated("Deprecated on Android, retained for runtime permission callback compatibility")
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,

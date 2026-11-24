@@ -1,12 +1,12 @@
 package com.nearnest.data.remote
 
-import io.github.jan.supabase.postgrest.rpc
-import io.github.jan.supabase.postgrest.postgrest
+import io.ktor.client.call.body
+import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.get
 
-class NearbyListingsRepository(
-    private val clientProvider: SupabaseClientProvider = SupabaseClientProvider
-) {
+class NearbyListingsRepository {
     suspend fun getNearby(
+        accessToken: String,
         latitude: Double,
         longitude: Double,
         radiusMeters: Int
@@ -14,14 +14,12 @@ class NearbyListingsRepository(
         require(latitude in -90.0..90.0) { "Latitude must be between -90 and 90." }
         require(longitude in -180.0..180.0) { "Longitude must be between -180 and 180." }
 
-        val response = clientProvider.client.postgrest.rpc(
-            function = "get_nearby_listings",
-            parameters = NearbyListingsRequest(
-                centerLatitude = latitude,
-                centerLongitude = longitude,
-                radiusMeters = radiusMeters.coerceIn(1_000, 20_000)
-            )
-        )
-        return response.decodeList<NearbyListing>()
+        val url = "${ApiClientProvider.baseUrl}/listings/nearby" +
+            "?latitude=$latitude&longitude=$longitude&radius_meters=${radiusMeters.coerceIn(1_000, 20_000)}"
+        val response = ApiClientProvider.client.get(url) {
+            bearerAuth(accessToken)
+        }
+        response.requireSuccess()
+        return response.body()
     }
 }

@@ -19,16 +19,26 @@ import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.Toast
 import com.nearnest.R
+import com.nearnest.data.remote.ApiUser
 import com.nearnest.ui.map.MapScreen
+import com.nearnest.ui.map.PickupLocationPicker
 import com.nearnest.ui.profile.ProfileScreen
+import com.nearnest.ui.sell.SellItemScreen
 
 /** Landing screen for HereBuy, with the nearby map as its main content. */
 class HomeScreen(
     private val activity: Activity,
+    private val currentUser: ApiUser,
     private val onSignOut: () -> Unit = {}
 ) {
     private val mapScreen = MapScreen(activity)
     private var showMapLabels = true
+    private var hasStarted = false
+    private var hasResumed = false
+    private var activePicker: PickupLocationPicker? = null
+    private var activePickerView: View? = null
+    private var activeSellScreen: SellItemScreen? = null
+    private var activeSellView: View? = null
 
     fun createView(savedInstanceState: Bundle?): View {
         val root = FrameLayout(activity).apply {
@@ -39,11 +49,66 @@ class HomeScreen(
         val compact = isCompactLayout()
         val navigationBarHeightDp = if (compact) 82 else 100
         val mapControls = mutableListOf<View>()
-        val profileScreen = ProfileScreen(activity, onSignOut)
+        val profileScreen = ProfileScreen(activity, currentUser, onSignOut)
         val profileView = profileScreen.createView(navigationBarHeightDp).apply {
             visibility = View.GONE
         }
-        val navigationBar = BottomNavBar(activity, onDestinationSelected = { destination ->
+        lateinit var navigationBar: BottomNavBar
+        fun dismissPicker() {
+            val picker = activePicker ?: return
+            if (hasResumed) picker.onPause()
+            if (hasStarted) picker.onStop()
+            picker.onDestroy()
+            activePickerView?.let(root::removeView)
+            activePickerView = null
+            activePicker = null
+        }
+        fun closeSellScreen(refreshListings: Boolean = false) {
+            dismissPicker()
+            activeSellScreen?.onDestroy()
+            activeSellScreen = null
+            activeSellView?.let(root::removeView)
+            activeSellView = null
+            profileView.visibility = View.GONE
+            mapContent.visibility = View.VISIBLE
+            mapControls.forEach { it.visibility = View.VISIBLE }
+            navigationBar.visibility = View.VISIBLE
+            if (refreshListings) mapScreen.refreshNearbyListings()
+        }
+        fun showSellScreen() {
+            if (activeSellScreen != null) return
+            profileView.visibility = View.GONE
+            mapContent.visibility = View.GONE
+            mapControls.forEach { it.visibility = View.GONE }
+            navigationBar.visibility = View.GONE
+            val screen = SellItemScreen(
+                activity = activity,
+                initialPickupPoint = mapScreen.currentMapCenter(),
+                onPickLocation = { initialPoint, onSelected ->
+                    dismissPicker()
+                    val picker = PickupLocationPicker(
+                        activity = activity,
+                        initialPoint = initialPoint,
+                        onSelected = { point ->
+                            dismissPicker()
+                            onSelected(point)
+                        },
+                        onCancel = { dismissPicker() }
+                    )
+                    activePicker = picker
+                    activePickerView = picker.createView()
+                    root.addView(activePickerView, FrameLayout.LayoutParams(-1, -1))
+                    if (hasStarted) picker.onStart()
+                    if (hasResumed) picker.onResume()
+                },
+                onClose = { closeSellScreen() },
+                onListingCreated = { closeSellScreen(refreshListings = true) }
+            )
+            activeSellScreen = screen
+            activeSellView = screen.createView()
+            root.addView(activeSellView, FrameLayout.LayoutParams(-1, -1))
+        }
+        navigationBar = BottomNavBar(activity, onDestinationSelected = { destination ->
             when (destination) {
                 BottomNavBar.Destination.PROFILE -> {
                     profileScreen.refresh()
@@ -64,7 +129,7 @@ class HomeScreen(
                     Toast.makeText(activity, "Coming soon", Toast.LENGTH_SHORT).show()
                 }
             }
-        })
+        }, onAddClick = { showSellScreen() })
         val searchBarHeightDp = if (compact) 46 else 50
         val searchTopOffsetDp = if (compact) 48 else 80
         val controlSizeDp = if (compact) 42 else 48
@@ -202,6 +267,7 @@ class HomeScreen(
             navigationBar.layoutParams = navigationLayout
 
             profileView.setPadding(0, topInset, 0, bottomInset)
+            activeSellView?.setPadding(0, topInset, 0, bottomInset)
 
             mapScreen.setBottomObstructionPx(bottomInset + dp(gpsBottomMarginDp))
             insets
@@ -213,13 +279,45 @@ class HomeScreen(
     fun onRequestPermissionsResult(requestCode: Int, grantResults: IntArray) =
         mapScreen.onRequestPermissionsResult(requestCode, grantResults)
 
-    fun onStart() = mapScreen.onStart()
-    fun onResume() = mapScreen.onResume()
-    fun onPause() = mapScreen.onPause()
-    fun onStop() = mapScreen.onStop()
-    fun onLowMemory() = mapScreen.onLowMemory()
-    fun onDestroy() = mapScreen.onDestroy()
-    fun onSaveInstanceState(outState: Bundle) = mapScreen.onSaveInstanceState(outState)
+    fun onStart() {
+        hasStarted = true
+        mapScreen.onStart()
+        activePicker?.onStart()
+    }
+
+    fun onResume() {
+        hasResumed = true
+        mapScreen.onResume()
+        activePicker?.onResume()
+    }
+
+    fun onPause() {
+        hasResumed = false
+        activePicker?.onPause()
+        mapScreen.onPause()
+    }
+
+    fun onStop() {
+        hasStarted = false
+        activePicker?.onStop()
+        mapScreen.onStop()
+    }
+
+    fun onLowMemory() {
+        mapScreen.onLowMemory()
+        activePicker?.onLowMemory()
+    }
+
+    fun onDestroy() {
+        activePicker?.onDestroy()
+        activeSellScreen?.onDestroy()
+        mapScreen.onDestroy()
+    }
+
+    fun onSaveInstanceState(outState: Bundle) {
+        mapScreen.onSaveInstanceState(outState)
+        activePicker?.onSaveInstanceState(outState)
+    }
 
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
 

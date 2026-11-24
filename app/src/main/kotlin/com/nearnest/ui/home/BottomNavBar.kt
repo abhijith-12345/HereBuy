@@ -92,7 +92,7 @@ class BottomNavBar(
                 setColor(Color.rgb(20, 166, 103))
             }
             elevation = dp(8).toFloat()
-            contentDescription = "Cart"
+            contentDescription = "Sell an item"
             isClickable = true
             isFocusable = true
             setOnClickListener { onAddClick() }
@@ -105,6 +105,17 @@ class BottomNavBar(
         addButton.addView(cartIcon, LayoutParams(dp(if (compact) 24 else 28), dp(if (compact) 24 else 28), Gravity.CENTER))
         addView(addButton, LayoutParams(dp(buttonSizeDp), dp(buttonSizeDp), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
             topMargin = dp(2)
+        })
+        addView(TextView(context).apply {
+            text = "Sell"
+            textSize = if (compact) 9f else 10f
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            setTextColor(activeColor)
+            contentDescription = "Sell an item"
+        }, LayoutParams(dp(60), dp(16), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
+            topMargin = dp(buttonSizeDp + 1)
         })
 
         select(Destination.HOME)

@@ -13,8 +13,9 @@ import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.TextView
 import com.nearnest.R
+import com.nearnest.data.remote.ApiClientProvider
+import com.nearnest.data.remote.AuthRepository
 import com.nearnest.data.remote.NearbyListingsRepository
-import com.nearnest.data.remote.SupabaseClientProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -49,6 +50,7 @@ class MapScreen(private val activity: Activity) {
     private var currentStyle: Style? = null
     private var mapStyleLoaded = false
     private var locationEnabled = false
+    private var lastUserLocation: Location? = null
     private var labelsVisible = true
     private var focusOnLocationAfterPermission = false
     private val nearbyRepository = NearbyListingsRepository()
@@ -195,6 +197,7 @@ class MapScreen(private val activity: Activity) {
             locationComponent.cameraMode = CameraMode.TRACKING
             locationEnabled = true
             val lastLocation = locationComponent.lastKnownLocation
+            if (lastLocation != null) lastUserLocation = lastLocation
             if (focus) {
                 if (lastLocation != null) {
                     currentMap.animateCamera(
@@ -220,11 +223,13 @@ class MapScreen(private val activity: Activity) {
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
 
     private fun loadNearbyListings(location: Location) {
-        if (!SupabaseClientProvider.isConfigured) return
+        if (!ApiClientProvider.isConfigured) return
+        val accessToken = AuthRepository(activity).getAccessToken() ?: return
         nearbyJob?.cancel()
         nearbyJob = nearbyScope.launch {
             try {
                 val listings = nearbyRepository.getNearby(
+                    accessToken = accessToken,
                     latitude = location.latitude,
                     longitude = location.longitude,
                     radiusMeters = DEFAULT_SEARCH_RADIUS_METERS
@@ -252,6 +257,21 @@ class MapScreen(private val activity: Activity) {
                 mapStatus.contentDescription = error.localizedMessage
             }
         }
+    }
+
+    fun currentMapCenter(): PickupPoint? {
+        val target = map?.cameraPosition?.target ?: return null
+        return PickupPoint(target.latitude, target.longitude)
+    }
+
+    fun refreshNearbyListings() {
+        val location = lastUserLocation ?: map?.cameraPosition?.target?.let { target ->
+            Location("herebuy-map-center").apply {
+                latitude = target.latitude
+                longitude = target.longitude
+            }
+        }
+        location?.let(::loadNearbyListings)
     }
 
     fun setBottomObstructionPx(bottomObstructionPx: Int) {
