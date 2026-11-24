@@ -1,3 +1,6 @@
+// FILE GUIDE: Builds and validates the account creation form before requesting email verification.
+// Change this file for the behavior described above; see workbook.md for its symbol map.
+
 package com.nearnest.ui.auth
 
 import android.app.Activity
@@ -17,6 +20,8 @@ import android.widget.ScrollView
 import android.widget.TextView
 import com.nearnest.data.remote.SignupOtpResponse
 
+/** Implements the signup screen. */
+
 class SignupScreen(
     private val activity: Activity,
     private val onBackToSignIn: () -> Unit,
@@ -35,6 +40,7 @@ class SignupScreen(
     private lateinit var submitButton: Button
     private lateinit var statusText: TextView
 
+    /** Builds and returns this component's Android view hierarchy. */
     fun createView(): View {
         val content = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -107,6 +113,7 @@ class SignupScreen(
         }
     }
 
+    /** Validates form fields and submits the requested API operation. */
     private fun submit() {
         val username = usernameInput.text.toString().trim()
         val email = emailInput.text.toString().trim()
@@ -126,6 +133,7 @@ class SignupScreen(
         }
     }
 
+    /** Creates a styled form field with the requested keyboard type. */
     private fun inputField(hintText: String, inputTypeValue: Int) = EditText(activity).apply {
         hint = hintText
         textSize = 16f
@@ -141,19 +149,23 @@ class SignupScreen(
         }
     }
 
+    /** Creates vertical spacing parameters for a form field. */
     private fun fieldLayout(top: Int) = LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(top) }
 
+    /** Updates controls to show or clear an in-progress request. */
     private fun setLoading(loading: Boolean) {
         listOf(usernameInput, emailInput, passwordInput, confirmPasswordInput).forEach { it.isEnabled = !loading }
         submitButton.isEnabled = !loading
         submitButton.text = if (loading) "Sending verification email..." else "Continue to email verification"
     }
 
+    /** Displays a user-facing status or form validation message. */
     private fun showMessage(message: String, isError: Boolean) {
         statusText.text = message
         statusText.setTextColor(if (isError) Color.rgb(179, 49, 49) else Color.rgb(74, 95, 112))
         statusText.visibility = View.VISIBLE
     }
 
+    /** Converts a density-independent pixel value to screen pixels. */
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
 }

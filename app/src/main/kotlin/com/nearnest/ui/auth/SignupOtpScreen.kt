@@ -1,3 +1,6 @@
+// FILE GUIDE: Builds the email verification form and handles code verification and resend actions.
+// Change this file for the behavior described above; see workbook.md for its symbol map.
+
 package com.nearnest.ui.auth
 
 import android.app.Activity
@@ -18,6 +21,8 @@ import android.widget.TextView
 import com.nearnest.data.remote.ApiUser
 import com.nearnest.data.remote.SignupOtpResponse
 
+/** Implements email one-time-code verification. */
+
 class SignupOtpScreen(
     private val activity: Activity,
     private val email: String,
@@ -30,6 +35,7 @@ class SignupOtpScreen(
     private lateinit var resendButton: Button
     private lateinit var statusText: TextView
 
+    /** Builds and returns this component's Android view hierarchy. */
     fun createView(): View {
         val content = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -119,6 +125,7 @@ class SignupOtpScreen(
         }
     }
 
+    /** Submits the entered verification code and reports the result. */
     private fun verify() {
         val code = codeInput.text.toString()
         if (!code.matches(Regex("^\\d{6}$"))) return showMessage("Enter the 6-digit code from your email.", true)
@@ -129,6 +136,7 @@ class SignupOtpScreen(
         }
     }
 
+    /** Requests a replacement verification code and reports the result. */
     private fun resend() {
         resendButton.isEnabled = false
         onResend { _, message, isError ->
@@ -137,6 +145,7 @@ class SignupOtpScreen(
         }
     }
 
+    /** Updates controls to show or clear an in-progress request. */
     private fun setLoading(loading: Boolean) {
         codeInput.isEnabled = !loading
         verifyButton.isEnabled = !loading
@@ -144,11 +153,13 @@ class SignupOtpScreen(
         verifyButton.text = if (loading) "Verifying..." else "Verify and create account"
     }
 
+    /** Displays a user-facing status or form validation message. */
     private fun showMessage(message: String, isError: Boolean) {
         statusText.text = message
         statusText.setTextColor(if (isError) Color.rgb(179, 49, 49) else Color.rgb(74, 95, 112))
         statusText.visibility = View.VISIBLE
     }
 
+    /** Converts a density-independent pixel value to screen pixels. */
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
 }

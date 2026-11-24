@@ -1,3 +1,4 @@
+# Generated Android, Kotlin, Python, local configuration, log, and downloaded archive files.
 .gradle/
 **/build/
 /build/

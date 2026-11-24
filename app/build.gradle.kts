@@ -1,3 +1,4 @@
+// Android application build settings, API URL injection, and app dependencies.
 import java.util.Properties
 
 plugins {
@@ -13,6 +14,7 @@ val localProperties = Properties().apply {
     }
 }
 
+/** Escapes a property value so Gradle can emit it as a valid BuildConfig string. */
 fun asBuildConfigString(value: String): String =
     "\"${value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "")}\""
 

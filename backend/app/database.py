@@ -1,3 +1,5 @@
+"""Creates the SQLAlchemy engine/session and applies safe development schema updates."""
+
 from pathlib import Path
 
 from sqlalchemy import create_engine, inspect, text
@@ -17,6 +19,7 @@ else:
 
 
 class Base(DeclarativeBase):
+    """Represents Base in the backend."""
     pass
 
 
@@ -24,6 +27,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 def prepare_development_schema() -> None:
+    """Applies safe startup schema adjustments for the configured database."""
     if DATABASE_URL.startswith("sqlite:"):
         inspector = inspect(engine)
         if "users" not in inspector.get_table_names():
@@ -114,6 +118,7 @@ def prepare_development_schema() -> None:
 
 
 def get_db():
+    """Yields a database session and closes it after request handling."""
     db = SessionLocal()
     try:
         yield db

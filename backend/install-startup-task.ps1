@@ -1,3 +1,4 @@
+# Registers and starts the HereBuy backend as a hidden Windows startup task.
 $ErrorActionPreference = 'Stop'
 
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()

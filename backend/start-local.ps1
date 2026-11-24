@@ -1,3 +1,4 @@
+# Creates the local backend environment, installs dependencies, and starts Uvicorn with reload.
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 

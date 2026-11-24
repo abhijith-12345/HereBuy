@@ -1,3 +1,6 @@
+// FILE GUIDE: Collects listing details and posts a new item to the API after validating required fields.
+// Change this file for the behavior described above; see workbook.md for its symbol map.
+
 package com.nearnest.ui.sell
 
 import android.app.Activity
@@ -25,6 +28,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
+/** Implements the new listing form and submission state. */
+
 class SellItemScreen(
     private val activity: Activity,
     private val initialPickupPoint: PickupPoint?,
@@ -44,6 +49,7 @@ class SellItemScreen(
     private lateinit var saveButton: Button
     private var pickupPoint: PickupPoint? = null
 
+    /** Builds and returns this component's Android view hierarchy. */
     fun createView(): View {
         pickupPoint = null
         val page = LinearLayout(activity).apply {
@@ -159,8 +165,10 @@ class SellItemScreen(
         return page
     }
 
+    /** Cancels this screen's coroutine scope and releases its pending work. */
     fun onDestroy() = scope.cancel()
 
+    /** Validates form fields and submits the requested API operation. */
     private fun submit() {
         val title = titleInput.text.toString().trim()
         val description = descriptionInput.text.toString().trim()
@@ -198,6 +206,7 @@ class SellItemScreen(
         }
     }
 
+    /** Updates controls to show or clear an in-progress request. */
     private fun setLoading(loading: Boolean) {
         saveButton.isEnabled = !loading
         saveButton.text = if (loading) "Posting…" else "Post item for sale"
@@ -206,12 +215,14 @@ class SellItemScreen(
         statusText.visibility = View.VISIBLE
     }
 
+    /** Displays Error in this component. */
     private fun showError(message: String) {
         statusText.text = message
         statusText.setTextColor(Color.rgb(179, 49, 49))
         statusText.visibility = View.VISIBLE
     }
 
+    /** Refreshes the form summary for the currently selected pickup coordinate. */
     private fun updatePickupSummary() {
         val point = pickupPoint
         pickupSummary.text = if (point == null) {
@@ -221,6 +232,7 @@ class SellItemScreen(
         }
     }
 
+    /** Creates a consistently styled section heading. */
     private fun sectionTitle(text: String) = TextView(activity).apply {
         this.text = text
         textSize = 16f
@@ -228,6 +240,7 @@ class SellItemScreen(
         setTextColor(Color.rgb(42, 62, 79))
     }
 
+    /** Creates a consistently styled text-entry field. */
     private fun input(hintText: String, inputTypeValue: Int) = EditText(activity).apply {
         hint = hintText
         textSize = 15f
@@ -239,15 +252,18 @@ class SellItemScreen(
         background = fieldBackground()
     }
 
+    /** Creates the shared rounded field background. */
     private fun fieldBackground() = GradientDrawable().apply {
         setColor(Color.WHITE)
         cornerRadius = dp(12).toFloat()
         setStroke(dp(1), Color.rgb(220, 228, 236))
     }
 
+    /** Creates vertical spacing parameters for a form field. */
     private fun fieldLayout(top: Int) = LinearLayout.LayoutParams(-1, dp(52)).apply {
         topMargin = dp(top)
     }
 
+    /** Converts a density-independent pixel value to screen pixels. */
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
 }

@@ -1,3 +1,5 @@
+"""Implements signup verification, login, and current-user API routes."""
+
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -39,6 +41,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def make_auth_response(user: User) -> AuthResponse:
+    """Builds the shared authentication response for a user."""
     token, expires_in = create_access_token(user.id)
     return AuthResponse(
         access_token=token,
@@ -48,15 +51,18 @@ def make_auth_response(user: User) -> AuthResponse:
 
 
 def _now() -> datetime:
+    """Returns the current UTC time used for signup challenge expiry checks."""
     return datetime.now(timezone.utc)
 
 
 def _aware(value: datetime) -> datetime:
     # SQLite returns naive datetimes even for timezone-aware columns.
+    """Makes a database datetime timezone-aware for consistent comparisons."""
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
 
 
 def _send_challenge(challenge: SignupVerification, db: Session, code: str) -> None:
+    """Persists and sends the signup verification code."""
     try:
         send_signup_otp(challenge.email, code)
     except Exception as exc:
@@ -70,6 +76,7 @@ def _send_challenge(challenge: SignupVerification, db: Session, code: str) -> No
 
 @router.post("/signup", response_model=SignupOtpResponse, status_code=status.HTTP_202_ACCEPTED)
 def start_signup(payload: SignupStart, db: Session = Depends(get_db)) -> SignupOtpResponse:
+    """Creates a pending signup challenge and sends its verification code."""
     username = payload.username.strip()
     email = str(payload.email).strip().lower()
     existing = db.scalar(
@@ -135,6 +142,7 @@ def start_signup(payload: SignupStart, db: Session = Depends(get_db)) -> SignupO
 
 @router.post("/signup/resend", response_model=SignupOtpResponse)
 def resend_signup_code(payload: SignupResend, db: Session = Depends(get_db)) -> SignupOtpResponse:
+    """Checks resend limits and sends another signup verification code."""
     challenge = db.get(SignupVerification, payload.challenge_id)
     if challenge is None or challenge.consumed_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signup verification is no longer available")
@@ -159,6 +167,7 @@ def resend_signup_code(payload: SignupResend, db: Session = Depends(get_db)) -> 
 
 @router.post("/signup/verify", response_model=AuthResponse)
 def verify_signup(payload: SignupVerify, db: Session = Depends(get_db)) -> AuthResponse:
+    """Checks the signup code and creates the user account and session."""
     challenge = db.get(SignupVerification, payload.challenge_id)
     if challenge is None or challenge.consumed_at is not None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification code is invalid or expired")
@@ -202,6 +211,7 @@ def verify_signup(payload: SignupVerify, db: Session = Depends(get_db)) -> AuthR
 
 @router.post("/login", response_model=AuthResponse)
 def log_in(payload: UserLogin, db: Session = Depends(get_db)) -> AuthResponse:
+    """Authenticates by username, phone, or email and returns a session."""
     identifier = payload.identifier.strip()
     if "@" in identifier:
         account_filter = User.email == identifier.lower()
@@ -218,4 +228,5 @@ def log_in(payload: UserLogin, db: Session = Depends(get_db)) -> AuthResponse:
 
 @router.get("/me", response_model=UserPublic)
 def read_me(user: User = Depends(get_current_user)) -> UserPublic:
+    """Returns the profile for the authenticated user."""
     return UserPublic.model_validate(user)

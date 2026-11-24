@@ -1,3 +1,4 @@
+# Runs Uvicorn in a restart loop and writes backend output to backend/logs/.
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 

@@ -1,3 +1,5 @@
+"""Creates the FastAPI app, configures startup, and mounts API routers."""
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -12,6 +14,7 @@ from app import models  # noqa: F401 - registers SQLAlchemy models on Base
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    """Runs configuration checks and database initialization before serving requests."""
     validate_settings()
     prepare_development_schema()
     Base.metadata.create_all(bind=engine)
@@ -30,6 +33,7 @@ app.include_router(listings.router, prefix=API_PREFIX)
 
 @app.get(f"{API_PREFIX}/health", tags=["health"])
 def health() -> JSONResponse:
+    """Checks database connectivity and returns the service health response."""
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
     return JSONResponse({"status": "ok", "service": "herebuy-api", "database": "connected"})

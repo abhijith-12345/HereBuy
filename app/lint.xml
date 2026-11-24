@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Android lint exceptions for known local configuration files. -->
 <lint>
     <issue id="PropertyEscape">
         <ignore path="../local.properties" />

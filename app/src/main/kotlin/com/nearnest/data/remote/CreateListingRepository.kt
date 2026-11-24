@@ -1,3 +1,6 @@
+// FILE GUIDE: Sends new listing data to the authenticated listings API.
+// Change this file for the behavior described above; see workbook.md for its symbol map.
+
 package com.nearnest.data.remote
 
 import io.ktor.client.request.bearerAuth
@@ -8,7 +11,10 @@ import io.ktor.http.contentType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/** Sends a validated seller listing to the backend and checks its response. */
+
 class CreateListingRepository {
+    /** Creates a listing through the authenticated backend API. */
     suspend fun createListing(
         accessToken: String,
         title: String,
@@ -39,6 +45,7 @@ class CreateListingRepository {
 }
 
 @Serializable
+/** JSON body sent to the create-listing endpoint. */
 private data class NewListing(
     val title: String,
     val description: String,

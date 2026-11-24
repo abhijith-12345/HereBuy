@@ -1,3 +1,4 @@
+// Project modules and dependency repositories used by the Gradle build.
 pluginManagement {
     repositories {
         google()

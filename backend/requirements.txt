@@ -1,3 +1,4 @@
+# Python packages required by the FastAPI backend and its database/auth features.
 fastapi[standard]>=0.115,<1.0
 SQLAlchemy>=2.0,<3.0
 pwdlib[argon2]>=0.2,<1.0

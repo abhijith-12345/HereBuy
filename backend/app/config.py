@@ -1,3 +1,5 @@
+"""Loads environment settings and validates required backend configuration."""
+
 import os
 from pathlib import Path
 
@@ -28,6 +30,7 @@ API_PREFIX = "/api/v1"
 
 
 def validate_settings() -> None:
+    """Validates required environment configuration before startup."""
     if len(JWT_SECRET_KEY) < 32 or JWT_SECRET_KEY.startswith("replace-this"):
         raise RuntimeError(
             "Set JWT_SECRET_KEY in backend/.env to a random value of at least 32 characters."

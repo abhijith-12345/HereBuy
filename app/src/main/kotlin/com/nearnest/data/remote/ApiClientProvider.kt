@@ -1,3 +1,6 @@
+// FILE GUIDE: Configures the shared Ktor HTTP client and reads the backend API base URL.
+// Change this file for the behavior described above; see workbook.md for its symbol map.
+
 package com.nearnest.data.remote
 
 import com.nearnest.BuildConfig

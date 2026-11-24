@@ -1,3 +1,6 @@
+// FILE GUIDE: Draws the custom bottom navigation bar and dispatches destination and posted-items actions.
+// Change this file for the behavior described above; see workbook.md for its symbol map.
+
 package com.nearnest.ui.home
 
 import android.content.Context
@@ -21,8 +24,9 @@ import com.nearnest.R
 class BottomNavBar(
     context: Context,
     private val onDestinationSelected: (Destination) -> Unit = {},
-    private val onAddClick: () -> Unit = {}
+    private val onMyItemsClick: () -> Unit = {}
 ) : FrameLayout(context) {
+    /** Implements the app bottom navigation UI. */
     enum class Destination { HOME, CHAT, NOTIFICATIONS, PROFILE }
 
     val preferredHeightDp: Int = if (
@@ -63,6 +67,19 @@ class BottomNavBar(
                     setImageResource(iconResource)
                     contentDescription = labelText
                 }
+                val badge = TextView(context).apply {
+                    gravity = Gravity.CENTER
+                    textSize = 9f
+                    includeFontPadding = false
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(3), 0, dp(3), 0)
+                    background = GradientDrawable().apply {
+                        shape = GradientDrawable.OVAL
+                        setColor(Color.rgb(221, 59, 59))
+                    }
+                    visibility = View.GONE
+                    contentDescription = "Unread notifications"
+                }
                 val label = TextView(context).apply {
                     text = labelText
                     textSize = if (compact) 9f else 10f
@@ -72,13 +89,22 @@ class BottomNavBar(
                     includeFontPadding = false
                     typeface = Typeface.create("sans-serif", Typeface.BOLD)
                 }
-                slot.addView(icon, LinearLayout.LayoutParams(dp(23), dp(23)))
+                val iconContainer = FrameLayout(context).apply {
+                    clipChildren = false
+                    clipToPadding = false
+                    addView(icon, LayoutParams(dp(23), dp(23), Gravity.CENTER))
+                    addView(badge, LayoutParams(dp(17), dp(17), Gravity.TOP or Gravity.END).apply {
+                        topMargin = -dp(3)
+                        marginEnd = -dp(4)
+                    })
+                }
+                slot.addView(iconContainer, LinearLayout.LayoutParams(dp(30), dp(25)))
                 slot.addView(label, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
                 slot.contentDescription = labelText
                 slot.isClickable = true
                 slot.isFocusable = true
                 slot.setOnClickListener { select(destination) }
-                destinations.add(NavigationItem(destination, icon, label))
+                destinations.add(NavigationItem(destination, icon, label, badge))
             }
             row.addView(slot, LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
         }
@@ -95,7 +121,7 @@ class BottomNavBar(
             contentDescription = "Sell an item"
             isClickable = true
             isFocusable = true
-            setOnClickListener { onAddClick() }
+            setOnClickListener { onMyItemsClick() }
         }
         val cartIcon = ImageView(context).apply {
             setImageResource(R.drawable.ic_nav_cart)
@@ -107,13 +133,13 @@ class BottomNavBar(
             topMargin = dp(2)
         })
         addView(TextView(context).apply {
-            text = "Sell"
+            text = "My items"
             textSize = if (compact) 9f else 10f
             gravity = Gravity.CENTER
             includeFontPadding = false
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
             setTextColor(activeColor)
-            contentDescription = "Sell an item"
+            contentDescription = "My posted items"
         }, LayoutParams(dp(60), dp(16), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
             topMargin = dp(buttonSizeDp + 1)
         })
@@ -121,6 +147,7 @@ class BottomNavBar(
         select(Destination.HOME)
     }
 
+    /** Updates selected navigation styling and notifies the destination listener. */
     private fun select(destination: Destination) {
         selectedDestination = destination
         destinations.forEach { item ->
@@ -133,12 +160,26 @@ class BottomNavBar(
         onDestinationSelected(destination)
     }
 
+    /** Selects a bottom navigation destination and updates its appearance. */
+    fun selectDestination(destination: Destination) = select(destination)
+
+    /** Updates the unread notification badge without changing the selected tab. */
+    fun setNotificationCount(count: Int) {
+        val badge = destinations.firstOrNull { it.destination == Destination.NOTIFICATIONS }?.badge ?: return
+        badge.text = if (count > 9) "9+" else count.toString()
+        badge.visibility = if (count > 0) View.VISIBLE else View.GONE
+    }
+
+    /** Converts a density-independent pixel value to screen pixels. */
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    /** Implements the app bottom navigation UI. */
 
     private data class NavigationItem(
         val destination: Destination,
         val icon: ImageView,
-        val label: TextView
+        val label: TextView,
+        val badge: TextView
     )
 
     private inner class BarSurface(context: Context) : View(context) {
@@ -151,6 +192,7 @@ class BottomNavBar(
             setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         }
 
+        /** Draws the white bar surface with the raised center-action notch. */
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
             val center = width / 2f

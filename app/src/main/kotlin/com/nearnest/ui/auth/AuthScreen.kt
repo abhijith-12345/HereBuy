@@ -1,3 +1,6 @@
+// FILE GUIDE: Builds the sign-in form and validates credentials before calling the authentication callback.
+// Change this file for the behavior described above; see workbook.md for its symbol map.
+
 package com.nearnest.ui.auth
 
 import android.app.Activity
@@ -15,6 +18,8 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 
+/** Implements the sign-in screen. */
+
 class AuthScreen(
     private val activity: Activity,
     private val onCreateAccount: () -> Unit,
@@ -29,6 +34,7 @@ class AuthScreen(
     private lateinit var signInButton: Button
     private lateinit var statusText: TextView
 
+    /** Builds and returns this component's Android view hierarchy. */
     fun createView(): View {
         val content = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -107,6 +113,7 @@ class AuthScreen(
         }
     }
 
+    /** Validates form fields and submits the requested API operation. */
     private fun submit() {
         val identifier = identifierInput.text.toString().trim()
         val password = passwordInput.text.toString()
@@ -126,6 +133,7 @@ class AuthScreen(
         }
     }
 
+    /** Creates a styled form field with the requested keyboard type. */
     private fun inputField(hintText: String, inputTypeValue: Int) = EditText(activity).apply {
         hint = hintText
         textSize = 16f
@@ -141,10 +149,12 @@ class AuthScreen(
         }
     }
 
+    /** Creates vertical spacing parameters for a form field. */
     private fun fieldLayout(top: Int) = LinearLayout.LayoutParams(-1, dp(52)).apply {
         topMargin = dp(top)
     }
 
+    /** Updates controls to show or clear an in-progress request. */
     private fun setLoading(loading: Boolean) {
         signInButton.isEnabled = !loading
         identifierInput.isEnabled = !loading
@@ -153,11 +163,13 @@ class AuthScreen(
         if (loading) showMessage("Connecting to HereBuy API...", false)
     }
 
+    /** Displays a user-facing status or form validation message. */
     fun showMessage(message: String, isError: Boolean = false) {
         statusText.text = message
         statusText.setTextColor(if (isError) Color.rgb(179, 49, 49) else Color.rgb(74, 95, 112))
         statusText.visibility = View.VISIBLE
     }
 
+    /** Converts a density-independent pixel value to screen pixels. */
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
 }

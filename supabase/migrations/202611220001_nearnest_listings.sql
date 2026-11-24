@@ -1,9 +1,11 @@
 -- NearNest's first backend slice: seller-managed listings and nearby discovery.
+-- Database guide: creates listings, seller policies, indexes, and nearby discovery.
 -- Run this migration in the Supabase SQL Editor for the new project.
 
 create schema if not exists extensions;
 create extension if not exists postgis with schema extensions;
 
+-- Listings table: stores seller, item details, availability, and the selected pickup point.
 create table if not exists public.listings (
     id uuid primary key default gen_random_uuid(),
     seller_id uuid not null references auth.users (id) on delete cascade,
@@ -28,6 +30,7 @@ create index if not exists listings_seller_id_idx
 create index if not exists listings_status_idx
     on public.listings (status);
 
+-- Row-level security: signed-in users can discover available items and manage their own.
 alter table public.listings enable row level security;
 revoke all on table public.listings from anon, authenticated;
 grant select, insert, update, delete on table public.listings to authenticated;
@@ -53,6 +56,7 @@ create policy "Sellers can delete their own listings"
     on public.listings for delete to authenticated
     using (seller_id = (select auth.uid()));
 
+-- Nearby search: returns available listings within a radius, with distance metadata.
 create or replace function public.get_nearby_listings(
     center_latitude double precision,
     center_longitude double precision,

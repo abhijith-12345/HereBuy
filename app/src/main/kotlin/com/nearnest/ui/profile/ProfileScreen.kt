@@ -1,3 +1,6 @@
+// FILE GUIDE: Shows account information, privacy details, app version, and sign-out controls.
+// Change this file for the behavior described above; see workbook.md for its symbol map.
+
 package com.nearnest.ui.profile
 
 import android.app.Activity
@@ -17,6 +20,8 @@ import android.widget.TextView
 import com.nearnest.BuildConfig
 import com.nearnest.data.remote.ApiUser
 
+/** Implements the signed-in user profile screen. */
+
 class ProfileScreen(
     private val activity: Activity,
     private val currentUser: ApiUser,
@@ -24,6 +29,7 @@ class ProfileScreen(
 ) {
     private lateinit var emailText: TextView
 
+    /** Builds and returns this component's Android view hierarchy. */
     fun createView(bottomBarHeightDp: Int): View {
         val content = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -66,12 +72,14 @@ class ProfileScreen(
         }
     }
 
+    /** Reloads the current screen's remote or account data. */
     fun refresh() {
         if (!::emailText.isInitialized) return
         val accountDetails = listOfNotNull(currentUser.email, currentUser.phoneNumber).joinToString("\n")
         emailText.text = "${currentUser.username ?: currentUser.displayName}\n$accountDetails"
     }
 
+    /** Builds the account identity card shown on the profile screen. */
     private fun accountCard(): View {
         val card = cardContainer()
         val avatar = TextView(activity).apply {
@@ -102,6 +110,7 @@ class ProfileScreen(
         return card
     }
 
+    /** Builds a profile information card with a title and description. */
     private fun sectionCard(title: String, description: String): LinearLayout = cardContainer().apply {
         addView(TextView(activity).apply {
             text = title
@@ -117,6 +126,7 @@ class ProfileScreen(
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
     }
 
+    /** Creates the shared profile card container. */
     private fun cardContainer() = LinearLayout(activity).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(16), dp(16), dp(16), dp(16))
@@ -128,6 +138,7 @@ class ProfileScreen(
         elevation = dp(1).toFloat()
     }
 
+    /** Builds a profile action button and applies its visual style. */
     private fun actionButton(
         label: String,
         onClick: () -> Unit,
@@ -144,9 +155,11 @@ class ProfileScreen(
         }
     }
 
+    /** Creates spacing parameters for a profile card. */
     private fun cardLayout(top: Int) = LinearLayout.LayoutParams(-1, -2).apply {
         topMargin = dp(top)
     }
 
+    /** Converts a density-independent pixel value to screen pixels. */
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
 }

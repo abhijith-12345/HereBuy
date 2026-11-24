@@ -1,3 +1,5 @@
+"""Defines SQLAlchemy user, signup-challenge, and listing tables."""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -8,10 +10,12 @@ from app.database import Base
 
 
 def utc_now() -> datetime:
+    """Returns the current UTC timestamp for model defaults."""
     return datetime.now(timezone.utc)
 
 
 class User(Base):
+    """Stores a HereBuy account and its unique login identifiers."""
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -24,6 +28,7 @@ class User(Base):
 
 
 class SignupVerification(Base):
+    """Stores a pending email signup challenge and its expiry and attempt state."""
     __tablename__ = "signup_verifications"
     __table_args__ = (
         Index("ix_signup_verifications_email_created", "email", "created_at"),
@@ -44,10 +49,12 @@ class SignupVerification(Base):
 
 
 class Listing(Base):
+    """Stores a seller-managed marketplace listing and its pickup coordinate."""
     __tablename__ = "listings"
     __table_args__ = (
         Index("ix_listings_status_created", "status", "created_at"),
         Index("ix_listings_location", "latitude", "longitude"),
+        Index("ix_listings_status_location", "status", "latitude", "longitude"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

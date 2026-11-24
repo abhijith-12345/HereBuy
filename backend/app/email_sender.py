@@ -1,3 +1,5 @@
+"""Sends signup verification codes by configured SMTP."""
+
 import smtplib
 import ssl
 from email.message import EmailMessage
@@ -13,6 +15,7 @@ from app.config import (
 
 
 def send_signup_otp(recipient: str, code: str) -> None:
+    """Sends a signup verification code using configured email delivery."""
     if not SMTP_HOST:
         raise RuntimeError("SMTP is not configured")
 

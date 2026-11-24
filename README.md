@@ -1,6 +1,12 @@
 # HereBuy
 
+See [workbook.md](workbook.md) for the complete project file map, key functions, and change locations.
+
 HereBuy is a native Android neighbourhood marketplace. The Android app uses MapLibre for maps and the FastAPI service in `backend/` for authentication and listing data. Supabase is not used by the Android app.
+
+The map fetches all available listings inside the current visible bounds. It waits briefly for panning or zooming to stop, cancels outdated requests, and loads the newly visible area; there is no fixed-distance map search radius. Location permission is only needed for the recenter button.
+
+Map settings also let a signed-in user choose a 1?100 km radius for nearby item alerts. While the app is open and location access is available, the client checks the authenticated `GET /api/v1/listings/alerts` endpoint once per minute. New available listings from other sellers appear in the Notifications tab with an unread badge; the first check establishes a baseline and does not notify for older listings. These are in-app alerts and do not arrive while the app is closed.
 
 ## Run on a USB-connected Android device
 

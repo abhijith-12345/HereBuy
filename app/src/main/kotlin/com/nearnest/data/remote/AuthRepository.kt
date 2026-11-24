@@ -1,3 +1,6 @@
+// FILE GUIDE: Implements API authentication and securely stores the access token with Android Keystore encryption.
+// Change this file for the behavior described above; see workbook.md for its symbol map.
+
 package com.nearnest.data.remote
 
 import android.content.Context
@@ -17,12 +20,16 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
+/** Provides authentication API calls and encrypted session-token storage. */
+
 class AuthRepository(context: Context) {
     private val preferences = context.applicationContext
         .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
+    /** Reports whether a readable saved access token exists. */
     fun hasSession(): Boolean = getAccessToken() != null
 
+    /** Reads and decrypts the saved access token, clearing invalid data. */
     fun getAccessToken(): String? {
         val encryptedToken = preferences.getString(KEY_ACCESS_TOKEN, null) ?: return null
         return runCatching { decrypt(encryptedToken) }.getOrNull()
@@ -32,6 +39,7 @@ class AuthRepository(context: Context) {
             }
     }
 
+    /** Loads the currently authenticated user from the API. */
     suspend fun fetchCurrentUser(): ApiUser {
         val token = getAccessToken() ?: throw ApiException("Please sign in again.", 401)
         val response = ApiClientProvider.client.get("${ApiClientProvider.baseUrl}/auth/me") {
@@ -41,6 +49,7 @@ class AuthRepository(context: Context) {
         return response.body()
     }
 
+    /** Authenticates the user and stores the returned session token. */
     suspend fun signIn(identifier: String, password: String): ApiUser {
         val response = ApiClientProvider.client.post("${ApiClientProvider.baseUrl}/auth/login") {
             contentType(ContentType.Application.Json)
@@ -50,6 +59,7 @@ class AuthRepository(context: Context) {
         return response.body<AuthResponse>().also { saveSession(it.accessToken) }.user
     }
 
+    /** Starts signup and requests an email verification code. */
     suspend fun beginSignup(username: String, email: String, password: String): SignupOtpResponse {
         val response = ApiClientProvider.client.post("${ApiClientProvider.baseUrl}/auth/signup") {
             contentType(ContentType.Application.Json)
@@ -59,6 +69,7 @@ class AuthRepository(context: Context) {
         return response.body()
     }
 
+    /** Verifies the signup code and stores the returned user session. */
     suspend fun verifySignup(challengeId: String, code: String): ApiUser {
         val response = ApiClientProvider.client.post("${ApiClientProvider.baseUrl}/auth/signup/verify") {
             contentType(ContentType.Application.Json)
@@ -68,6 +79,7 @@ class AuthRepository(context: Context) {
         return response.body<AuthResponse>().also { saveSession(it.accessToken) }.user
     }
 
+    /** Requests a new signup verification code. */
     suspend fun resendSignupCode(challengeId: String): SignupOtpResponse {
         val response = ApiClientProvider.client.post("${ApiClientProvider.baseUrl}/auth/signup/resend") {
             contentType(ContentType.Application.Json)
@@ -77,16 +89,19 @@ class AuthRepository(context: Context) {
         return response.body()
     }
 
+    /** Clears locally stored authentication state. */
     suspend fun signOut() {
         preferences.edit().clear().apply()
     }
 
+    /** Encrypts and persists the access token. */
     private fun saveSession(accessToken: String) {
         preferences.edit()
             .putString(KEY_ACCESS_TOKEN, encrypt(accessToken))
             .apply()
     }
 
+    /** Encrypts a token using the Android Keystore AES key. */
     private fun encrypt(value: String): String {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
@@ -94,6 +109,7 @@ class AuthRepository(context: Context) {
         return Base64.encodeToString(cipher.iv + encrypted, Base64.NO_WRAP)
     }
 
+    /** Decrypts the stored token using the Android Keystore AES key. */
     private fun decrypt(value: String): String {
         val payload = Base64.decode(value, Base64.NO_WRAP)
         require(payload.size > GCM_IV_BYTES) { "Invalid encrypted session token." }
@@ -104,6 +120,7 @@ class AuthRepository(context: Context) {
         return String(cipher.doFinal(ciphertext), Charsets.UTF_8)
     }
 
+    /** Loads or creates the app's Android Keystore AES key. */
     private fun getOrCreateKey(): SecretKey {
         val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         (keyStore.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }

@@ -1,8 +1,11 @@
+// FILE GUIDE: Owns the map viewport, optional location access, visible listing markers, and map lifecycle.
+// Change this file for the behavior described above; see workbook.md for its symbol map.
+
 package com.nearnest.ui.map
 
 import android.app.Activity
-import android.location.Location
 import android.content.pm.PackageManager
+import android.location.Location
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -21,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.maplibre.android.annotations.Marker
 import org.maplibre.android.annotations.MarkerOptions
@@ -49,16 +53,17 @@ class MapScreen(private val activity: Activity) {
     private var map: MapLibreMap? = null
     private var currentStyle: Style? = null
     private var mapStyleLoaded = false
-    private var locationEnabled = false
     private var lastUserLocation: Location? = null
     private var labelsVisible = true
     private var focusOnLocationAfterPermission = false
-    private val nearbyRepository = NearbyListingsRepository()
-    private val nearbyScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var nearbyJob: Job? = null
+    private val listingsRepository = NearbyListingsRepository()
+    private val listingsScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var viewportJob: Job? = null
+    private var cameraListenersAttached = false
     private val listingMarkers = mutableListOf<Marker>()
     var onMapBearingChanged: ((Float) -> Unit)? = null
 
+    /** Builds and returns this component's Android view hierarchy. */
     fun createView(savedInstanceState: Bundle?): View {
         MapLibre.getInstance(activity)
 
@@ -107,7 +112,7 @@ class MapScreen(private val activity: Activity) {
         }
         mapView.addOnDidFinishLoadingMapListener {
             activity.runOnUiThread {
-                if (locationEnabled) mapStatus.visibility = View.GONE
+                mapStatus.visibility = View.GONE
             }
         }
         mapView.addOnDidFailLoadingMapListener { errorMessage ->
@@ -123,14 +128,22 @@ class MapScreen(private val activity: Activity) {
         return root
     }
 
+    /** Loads the map style, resets the initial camera, and starts location permission handling. */
     private fun loadMap() {
         mapStatus.visibility = View.VISIBLE
         mapStatus.text = "Loading map..."
         mapView.getMapAsync { map ->
             this.map = map
             map.uiSettings.isCompassEnabled = false
-            map.addOnCameraMoveListener {
-                onMapBearingChanged?.invoke(map.cameraPosition.bearing.toFloat())
+            if (!cameraListenersAttached) {
+                map.addOnCameraMoveListener {
+                    viewportJob?.cancel()
+                    onMapBearingChanged?.invoke(map.cameraPosition.bearing.toFloat())
+                }
+                map.addOnCameraIdleListener {
+                    if (mapStyleLoaded) loadListingsInViewport()
+                }
+                cameraListenersAttached = true
             }
             map.setStyle(MAP_STYLE_URL) { style ->
                 mapStyleLoaded = true
@@ -141,17 +154,17 @@ class MapScreen(private val activity: Activity) {
                     .zoom(13.0)
                     .build()
                 requestLocationAccess(focusOnLocationAfterPermission)
+                loadListingsInViewport()
             }
         }
     }
 
+    /** Requests location permission and optionally focuses the map on the user. */
     private fun requestLocationAccess(focus: Boolean = false) {
         if (hasLocationPermission()) {
             showUserLocation(focus)
             if (focus) focusOnLocationAfterPermission = false
         } else {
-            mapStatus.visibility = View.VISIBLE
-            mapStatus.text = "Allow location to see your position"
             activity.requestPermissions(
                 arrayOf(
                     android.Manifest.permission.ACCESS_FINE_LOCATION,
@@ -162,6 +175,7 @@ class MapScreen(private val activity: Activity) {
         }
     }
 
+    /** Handles the result of the device location permission prompt. */
     fun onRequestPermissionsResult(requestCode: Int, grantResults: IntArray) {
         if (requestCode != LOCATION_PERMISSION_REQUEST || !mapStyleLoaded) return
 
@@ -169,21 +183,24 @@ class MapScreen(private val activity: Activity) {
             showUserLocation(focus = focusOnLocationAfterPermission)
             focusOnLocationAfterPermission = false
         } else {
-            mapStatus.visibility = View.VISIBLE
-            mapStatus.text = "Location access denied"
+            // Location improves recentering; viewport browsing still works without it.
+            mapStatus.visibility = View.GONE
         }
     }
 
+    /** Checks whether precise or approximate location access is granted. */
     private fun hasLocationPermission(): Boolean =
         activity.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             activity.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
+    /** Handles a tap on the map's current-location control. */
     private fun onMyLocationButtonClicked() {
         focusOnLocationAfterPermission = true
         if (mapStyleLoaded) requestLocationAccess(focus = true)
     }
 
     @Suppress("MissingPermission")
+    /** Reads the device location, updates the location marker, and optionally moves the camera. */
     private fun showUserLocation(focus: Boolean = false) {
         val currentMap = map ?: return
         val style = currentStyle ?: return
@@ -195,7 +212,6 @@ class MapScreen(private val activity: Activity) {
             locationComponent.isLocationComponentEnabled = true
             locationComponent.renderMode = RenderMode.NORMAL
             locationComponent.cameraMode = CameraMode.TRACKING
-            locationEnabled = true
             val lastLocation = locationComponent.lastKnownLocation
             if (lastLocation != null) lastUserLocation = lastLocation
             if (focus) {
@@ -211,7 +227,6 @@ class MapScreen(private val activity: Activity) {
                     currentMap.animateCamera(CameraUpdateFactory.zoomTo(USER_LOCATION_ZOOM), 500)
                 }
             }
-            if (lastLocation != null) loadNearbyListings(lastLocation)
             mapStatus.visibility = View.GONE
         } catch (error: Exception) {
             mapStatus.visibility = View.VISIBLE
@@ -220,22 +235,31 @@ class MapScreen(private val activity: Activity) {
         }
     }
 
+    /** Converts a density-independent pixel value to screen pixels. */
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
 
-    private fun loadNearbyListings(location: Location) {
+    /** Debounces camera changes, fetches every listing in the visible bounds, and replaces markers. */
+    private fun loadListingsInViewport() {
         if (!ApiClientProvider.isConfigured) return
         val accessToken = AuthRepository(activity).getAccessToken() ?: return
-        nearbyJob?.cancel()
-        nearbyJob = nearbyScope.launch {
+        viewportJob?.cancel()
+        viewportJob = listingsScope.launch {
             try {
-                val listings = nearbyRepository.getNearby(
-                    accessToken = accessToken,
-                    latitude = location.latitude,
-                    longitude = location.longitude,
-                    radiusMeters = DEFAULT_SEARCH_RADIUS_METERS
-                )
+                delay(VIEWPORT_REQUEST_DEBOUNCE_MS)
                 val currentMap = map ?: return@launch
-                listingMarkers.forEach(currentMap::removeMarker)
+                val bounds = currentMap.projection.visibleRegion.latLngBounds
+                val center = currentMap.cameraPosition.target ?: return@launch
+                val listings = listingsRepository.getInViewport(
+                    accessToken = accessToken,
+                    west = bounds.longitudeWest,
+                    south = bounds.latitudeSouth,
+                    east = bounds.longitudeEast,
+                    north = bounds.latitudeNorth,
+                    centerLatitude = center.latitude,
+                    centerLongitude = center.longitude
+                )
+                val activeMap = map ?: return@launch
+                listingMarkers.forEach(activeMap::removeMarker)
                 listingMarkers.clear()
                 listings.forEach { listing ->
                     val distanceKm = listing.distanceMeters / 1_000.0
@@ -243,7 +267,7 @@ class MapScreen(private val activity: Activity) {
                         if (listing.pickupArea.isNotBlank()) add(listing.pickupArea)
                         add("%.1f km away".format(distanceKm))
                     }.joinToString(" • ")
-                    listingMarkers += currentMap.addMarker(
+                    listingMarkers += activeMap.addMarker(
                         MarkerOptions()
                             .position(LatLng(listing.latitude, listing.longitude))
                             .title("${listing.title} · ${listing.price}")
@@ -253,27 +277,30 @@ class MapScreen(private val activity: Activity) {
             } catch (error: Exception) {
                 if (error is kotlinx.coroutines.CancellationException) throw error
                 mapStatus.visibility = View.VISIBLE
-                mapStatus.text = "Could not load nearby listings"
+                mapStatus.text = "Could not load map listings"
                 mapStatus.contentDescription = error.localizedMessage
             }
         }
     }
 
+    /** Returns the current map center as a pickup coordinate when available. */
     fun currentMapCenter(): PickupPoint? {
         val target = map?.cameraPosition?.target ?: return null
         return PickupPoint(target.latitude, target.longitude)
     }
 
-    fun refreshNearbyListings() {
-        val location = lastUserLocation ?: map?.cameraPosition?.target?.let { target ->
-            Location("herebuy-map-center").apply {
-                latitude = target.latitude
-                longitude = target.longitude
-            }
-        }
-        location?.let(::loadNearbyListings)
+    /** Returns the last device location when location permission is available. */
+    fun currentUserLocation(): PickupPoint? {
+        if (!hasLocationPermission()) return null
+        val location = map?.locationComponent?.lastKnownLocation ?: lastUserLocation ?: return null
+        lastUserLocation = location
+        return PickupPoint(location.latitude, location.longitude)
     }
 
+    /** Reloads listing markers for the map's current visible bounds. */
+    fun refreshNearbyListings() = loadListingsInViewport()
+
+    /** Adjusts map camera padding for controls at the bottom of the screen. */
     fun setBottomObstructionPx(bottomObstructionPx: Int) {
         val button = myLocationButton ?: return
         val params = button.layoutParams as? FrameLayout.LayoutParams ?: return
@@ -281,6 +308,7 @@ class MapScreen(private val activity: Activity) {
         button.layoutParams = params
     }
 
+    /** Toggles map labels without reloading the map. */
     fun setLabelsVisible(visible: Boolean) {
         labelsVisible = visible
         currentStyle?.layers
@@ -290,6 +318,7 @@ class MapScreen(private val activity: Activity) {
             }
     }
 
+    /** Resets the map bearing to north. */
     fun resetMapOrientation() {
         val currentMap = map ?: return
         val currentPosition = currentMap.cameraPosition
@@ -302,22 +331,29 @@ class MapScreen(private val activity: Activity) {
         currentMap.animateCamera(CameraUpdateFactory.newCameraPosition(northUpPosition), 350)
     }
 
+    /** Forwards Android start lifecycle to owned map views. */
     fun onStart() = mapView.onStart()
+    /** Resumes owned map views and location updates. */
     fun onResume() = mapView.onResume()
+    /** Pauses owned map views and location updates. */
     fun onPause() = mapView.onPause()
+    /** Stops owned map views and location updates. */
     fun onStop() = mapView.onStop()
+    /** Forwards Android low-memory notification to the map view. */
     fun onLowMemory() = mapView.onLowMemory()
+    /** Releases resources and cancels work owned by this screen. */
     fun onDestroy() {
-        nearbyJob?.cancel()
-        nearbyScope.cancel()
+        viewportJob?.cancel()
+        listingsScope.cancel()
         mapView.onDestroy()
     }
+    /** Saves state needed to restore the current view. */
     fun onSaveInstanceState(outState: Bundle) = mapView.onSaveInstanceState(outState)
 
     private companion object {
         const val MAP_STYLE_URL = "asset://map/nearnest-map-style.json"
         const val LOCATION_PERMISSION_REQUEST = 4102
         const val USER_LOCATION_ZOOM = 18.0
-        const val DEFAULT_SEARCH_RADIUS_METERS = 5_000
+        const val VIEWPORT_REQUEST_DEBOUNCE_MS = 100L
     }
 }

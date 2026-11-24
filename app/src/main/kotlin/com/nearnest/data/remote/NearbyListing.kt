@@ -1,8 +1,12 @@
+// FILE GUIDE: Defines the nearby-listing data model returned by the discovery API.
+// Change this file for the behavior described above; see workbook.md for its symbol map.
+
 package com.nearnest.data.remote
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/** Represents a single result from nearby listing discovery. */
 @Serializable
 data class NearbyListing(
     val id: String,

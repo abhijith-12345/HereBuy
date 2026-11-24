@@ -1,3 +1,6 @@
+// FILE GUIDE: Lets a seller choose a fixed pickup point by moving the map beneath a center pin.
+// Change this file for the behavior described above; see workbook.md for its symbol map.
+
 package com.nearnest.ui.map
 
 import android.app.Activity
@@ -20,6 +23,8 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
 
+/** Implements the seller pickup-point map picker. */
+
 data class PickupPoint(val latitude: Double, val longitude: Double)
 
 /** Lets the seller choose a fixed pickup point by moving the map under its center marker. */
@@ -33,6 +38,7 @@ class PickupLocationPicker(
     private var selectedPoint: PickupPoint? = null
     private var destroyed = false
 
+    /** Builds and returns this component's Android view hierarchy. */
     fun createView(): View {
         MapLibre.getInstance(activity)
         val root = FrameLayout(activity).apply { setBackgroundColor(Color.WHITE) }
@@ -123,6 +129,7 @@ class PickupLocationPicker(
                     .target(LatLng(start.latitude, start.longitude))
                     .zoom(15.0)
                     .build()
+                /** Updates the pickup coordinate from the map camera center. */
                 fun updateSelectedPoint() {
                     map.cameraPosition.target?.let { target ->
                         selectedPoint = PickupPoint(target.latitude, target.longitude)
@@ -136,14 +143,21 @@ class PickupLocationPicker(
         return root
     }
 
+    /** Forwards Android start lifecycle to owned map views. */
     fun onStart() { if (::mapView.isInitialized && !destroyed) mapView.onStart() }
+    /** Resumes owned map views and location updates. */
     fun onResume() { if (::mapView.isInitialized && !destroyed) mapView.onResume() }
+    /** Pauses owned map views and location updates. */
     fun onPause() { if (::mapView.isInitialized && !destroyed) mapView.onPause() }
+    /** Stops owned map views and location updates. */
     fun onStop() { if (::mapView.isInitialized && !destroyed) mapView.onStop() }
+    /** Forwards Android low-memory notification to the map view. */
     fun onLowMemory() { if (::mapView.isInitialized && !destroyed) mapView.onLowMemory() }
+    /** Saves state needed to restore the current view. */
     fun onSaveInstanceState(outState: Bundle) {
         if (::mapView.isInitialized && !destroyed) mapView.onSaveInstanceState(outState)
     }
+    /** Releases resources and cancels work owned by this screen. */
     fun onDestroy() {
         if (::mapView.isInitialized && !destroyed) {
             destroyed = true
@@ -151,17 +165,22 @@ class PickupLocationPicker(
         }
     }
 
+    /** Creates the shared rounded card background. */
     private fun roundedCard() = GradientDrawable().apply {
         setColor(Color.WHITE)
         cornerRadius = dp(16).toFloat()
         setStroke(dp(1), Color.rgb(224, 232, 239))
     }
 
+    /** Converts a density-independent pixel value to screen pixels. */
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
+
+    /** Implements the seller pickup-point map picker. */
 
     private class CenterPin(context: Activity) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
+        /** Draws the fixed center pin used to mark the currently selected pickup coordinate. */
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
             val cx = width / 2f
@@ -177,6 +196,7 @@ class PickupLocationPicker(
             canvas.drawLine(cx, cy + dp(12), cx, cy + dp(24), paint)
         }
 
+        /** Converts a density-independent pixel value to screen pixels. */
         private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     }
 }
