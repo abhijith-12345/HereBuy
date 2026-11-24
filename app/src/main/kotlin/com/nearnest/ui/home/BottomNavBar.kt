@@ -36,7 +36,7 @@ class BottomNavBar(
 
     private val destinations = mutableListOf<NavigationItem>()
     private var selectedDestination = Destination.HOME
-    private val activeColor = Color.rgb(18, 165, 105)
+    private val activeColor = Color.rgb(20, 122, 67)
     private val inactiveColor = Color.rgb(176, 178, 180)
     private val compact = preferredHeightDp == 82
     private val buttonSizeDp = if (compact) 48 else 58
@@ -115,7 +115,7 @@ class BottomNavBar(
         val addButton = FrameLayout(context).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.rgb(20, 166, 103))
+                setColor(Color.rgb(20, 122, 67))
             }
             elevation = dp(8).toFloat()
             contentDescription = "Sell an item"

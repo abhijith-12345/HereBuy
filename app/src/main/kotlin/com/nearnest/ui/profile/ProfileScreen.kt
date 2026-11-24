@@ -90,7 +90,7 @@ class ProfileScreen(
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.rgb(22, 119, 210))
+                setColor(Color.rgb(20, 122, 67))
             }
         }
         card.addView(avatar, LinearLayout.LayoutParams(dp(54), dp(54)))

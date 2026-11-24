@@ -54,7 +54,7 @@ class SellItemScreen(
         pickupPoint = null
         val page = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.rgb(246, 249, 252))
+            setBackgroundColor(Color.rgb(241, 247, 241))
         }
 
         val header = LinearLayout(activity).apply {
@@ -75,7 +75,7 @@ class SellItemScreen(
         header.addView(TextView(activity).apply {
             text = "Sell an item"
             textSize = 20f
-            setTextColor(Color.rgb(34, 55, 73))
+            setTextColor(Color.rgb(24, 67, 42))
             typeface = Typeface.DEFAULT_BOLD
         }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(8) })
         page.addView(header, LinearLayout.LayoutParams(-1, -2))
@@ -152,7 +152,7 @@ class SellItemScreen(
         saveButton = Button(activity).apply {
             text = "Post item for sale"
             setTextColor(Color.WHITE)
-            backgroundTintList = ColorStateList.valueOf(Color.rgb(20, 166, 103))
+            backgroundTintList = ColorStateList.valueOf(Color.rgb(20, 122, 67))
             setOnClickListener { submit() }
         }
         form.addView(saveButton, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(18) })

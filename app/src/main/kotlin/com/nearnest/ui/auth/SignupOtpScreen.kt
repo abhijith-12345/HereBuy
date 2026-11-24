@@ -44,21 +44,21 @@ class SignupOtpScreen(
             background = GradientDrawable().apply {
                 setColor(Color.WHITE)
                 cornerRadius = dp(22).toFloat()
-                setStroke(dp(1), Color.rgb(224, 232, 239))
+                setStroke(dp(1), Color.rgb(215, 230, 216))
             }
             elevation = dp(4).toFloat()
         }
         content.addView(TextView(activity).apply {
             text = "Verify your email"
             textSize = 26f
-            setTextColor(Color.rgb(28, 76, 119))
+            setTextColor(Color.rgb(15, 72, 45))
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(-1, -2))
         content.addView(TextView(activity).apply {
             text = "Enter the 6-digit code sent to\n$email"
             textSize = 15f
-            setTextColor(Color.rgb(95, 111, 126))
+            setTextColor(Color.rgb(91, 111, 96))
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
@@ -67,23 +67,23 @@ class SignupOtpScreen(
             textSize = 22f
             gravity = Gravity.CENTER
             letterSpacing = 0.24f
-            setTextColor(Color.rgb(40, 52, 64))
-            setHintTextColor(Color.rgb(130, 142, 153))
+            setTextColor(Color.rgb(35, 49, 39))
+            setHintTextColor(Color.rgb(124, 145, 128))
             inputType = InputType.TYPE_CLASS_NUMBER
             filters = arrayOf(InputFilter.LengthFilter(6))
             setSingleLine(true)
             setPadding(dp(14), 0, dp(14), 0)
             background = GradientDrawable().apply {
-                setColor(Color.rgb(248, 250, 252))
+                setColor(Color.rgb(248, 251, 247))
                 cornerRadius = dp(12).toFloat()
-                setStroke(dp(1), Color.rgb(220, 228, 236))
+                setStroke(dp(1), Color.rgb(210, 226, 211))
             }
         }
         content.addView(codeInput, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(26) })
 
         statusText = TextView(activity).apply {
             textSize = 13f
-            setTextColor(Color.rgb(74, 95, 112))
+            setTextColor(Color.rgb(73, 97, 78))
             visibility = View.GONE
         }
         content.addView(statusText, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
@@ -91,21 +91,21 @@ class SignupOtpScreen(
         verifyButton = Button(activity).apply {
             text = "Verify and create account"
             setTextColor(Color.WHITE)
-            backgroundTintList = ColorStateList.valueOf(Color.rgb(22, 119, 210))
+            backgroundTintList = ColorStateList.valueOf(Color.rgb(20, 122, 67))
             setOnClickListener { verify() }
         }
         content.addView(verifyButton, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(16) })
         resendButton = Button(activity).apply {
             text = "Resend code"
-            setTextColor(Color.rgb(22, 119, 210))
-            backgroundTintList = ColorStateList.valueOf(Color.rgb(233, 243, 251))
+            setTextColor(Color.rgb(20, 122, 67))
+            backgroundTintList = ColorStateList.valueOf(Color.rgb(232, 245, 235))
             setOnClickListener { resend() }
         }
         content.addView(resendButton, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
         content.addView(TextView(activity).apply {
             text = "Back to signup"
             textSize = 15f
-            setTextColor(Color.rgb(22, 119, 210))
+            setTextColor(Color.rgb(20, 122, 67))
             gravity = Gravity.CENTER
             setPadding(0, dp(14), 0, dp(4))
             setOnClickListener { onBack() }
@@ -113,7 +113,7 @@ class SignupOtpScreen(
 
         return ScrollView(activity).apply {
             isFillViewport = true
-            setBackgroundColor(Color.rgb(243, 248, 252))
+            setBackgroundColor(Color.rgb(241, 247, 241))
             isVerticalScrollBarEnabled = false
             addView(content, FrameLayout.LayoutParams(-1, -2).apply {
                 gravity = Gravity.CENTER
@@ -156,7 +156,7 @@ class SignupOtpScreen(
     /** Displays a user-facing status or form validation message. */
     private fun showMessage(message: String, isError: Boolean) {
         statusText.text = message
-        statusText.setTextColor(if (isError) Color.rgb(179, 49, 49) else Color.rgb(74, 95, 112))
+        statusText.setTextColor(if (isError) Color.rgb(179, 49, 49) else Color.rgb(73, 97, 78))
         statusText.visibility = View.VISIBLE
     }
 

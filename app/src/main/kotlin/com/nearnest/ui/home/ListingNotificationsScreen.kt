@@ -27,13 +27,13 @@ class ListingNotificationsScreen(
     fun createView(): View {
         val page = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.rgb(246, 249, 252))
+            setBackgroundColor(Color.rgb(241, 247, 241))
         }
         page.addView(TextView(activity).apply {
             text = "Notifications"
             textSize = 22f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(34, 55, 73))
+            setTextColor(Color.rgb(24, 67, 42))
             setPadding(dp(20), dp(18), dp(20), dp(14))
             setBackgroundColor(Color.WHITE)
         }, LinearLayout.LayoutParams(-1, -2))
@@ -105,7 +105,7 @@ class ListingNotificationsScreen(
             text = listing.title
             textSize = 17f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(34, 55, 73))
+            setTextColor(Color.rgb(24, 67, 42))
         })
         card.addView(TextView(activity).apply {
             text = "₹${"%.2f".format(listing.price)}  ·  ${listing.category}  ·  ${"%.1f".format(listing.distanceMeters / 1_000.0)} km away"

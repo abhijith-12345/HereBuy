@@ -39,7 +39,7 @@ class MyListingsScreen(
     fun createView(): View {
         val page = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.rgb(246, 249, 252))
+            setBackgroundColor(Color.rgb(241, 247, 241))
         }
         val header = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -51,7 +51,7 @@ class MyListingsScreen(
             text = "My posted items"
             textSize = 22f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(34, 55, 73))
+            setTextColor(Color.rgb(24, 67, 42))
         }, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(TextView(activity).apply {
             text = "Back"
@@ -65,7 +65,7 @@ class MyListingsScreen(
         addButton = Button(activity).apply {
             text = "Sell a new item"
             setTextColor(Color.WHITE)
-            backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(20, 166, 103))
+            backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(20, 122, 67))
             setOnClickListener { onSellNew() }
         }
         status = TextView(activity).apply {
@@ -143,7 +143,7 @@ class MyListingsScreen(
                 text = listing.title
                 textSize = 17f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(34, 55, 73))
+                setTextColor(Color.rgb(24, 67, 42))
             })
             card.addView(TextView(activity).apply {
                 text = "₹${"%.2f".format(listing.price)}  ·  ${listing.category}  ·  ${listing.status}"

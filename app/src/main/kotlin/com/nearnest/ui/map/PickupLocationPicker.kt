@@ -94,7 +94,7 @@ class PickupLocationPicker(
             text = "Use this pickup spot"
             isEnabled = false
             setTextColor(Color.WHITE)
-            backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(20, 166, 103))
+            backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(20, 122, 67))
             setOnClickListener { selectedPoint?.let(onSelected) }
         }
         actions.addView(cancelButton, LinearLayout.LayoutParams(0, dp(50), 1f).apply {
@@ -189,9 +189,9 @@ class PickupLocationPicker(
             paint.setShadowLayer(dp(3).toFloat(), 0f, dp(2).toFloat(), Color.argb(75, 0, 0, 0))
             canvas.drawCircle(cx, cy, dp(12).toFloat(), paint)
             paint.clearShadowLayer()
-            paint.color = Color.rgb(20, 166, 103)
+            paint.color = Color.rgb(20, 122, 67)
             canvas.drawCircle(cx, cy, dp(7).toFloat(), paint)
-            paint.color = Color.rgb(20, 166, 103)
+            paint.color = Color.rgb(20, 122, 67)
             paint.strokeWidth = dp(3).toFloat()
             canvas.drawLine(cx, cy + dp(12), cx, cy + dp(24), paint)
         }
