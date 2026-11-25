@@ -6,7 +6,9 @@ HereBuy is a native Android neighbourhood marketplace. The Android app uses MapL
 
 The map fetches all available listings inside the current visible bounds. It waits briefly for panning or zooming to stop, cancels outdated requests, and loads the newly visible area; there is no fixed-distance map search radius. Location permission is only needed for the recenter button.
 
-Map settings also let a signed-in user choose a 1?100 km radius for nearby item alerts. While the app is open and location access is available, the client checks the authenticated `GET /api/v1/listings/alerts` endpoint once per minute. New available listings from other sellers appear in the Notifications tab with an unread badge; the first check establishes a baseline and does not notify for older listings. These are in-app alerts and do not arrive while the app is closed.
+Map settings also let a signed-in user choose a 1–100 km radius for nearby item alerts. While the app is open, the app checks for alerts and shows them in the Notifications tab. Firebase Cloud Messaging sends a system notification for new listings when the app is open or in the background. Android 13+ asks for notification permission the first time the user opens the signed-in home screen.
+
+To enable push delivery, create/register the Android app (`com.nearnest`) in Firebase and add `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID`, and `FIREBASE_SENDER_ID` to ignored `local.properties`. Set `FIREBASE_CREDENTIALS_PATH` in `backend/.env` to a Firebase Admin service-account JSON file kept outside version control. Without these Firebase settings the app still builds, but push delivery stays disabled.
 
 ## Run on a USB-connected Android device
 

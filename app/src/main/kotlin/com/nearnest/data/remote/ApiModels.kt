@@ -83,3 +83,12 @@ data class ListingAlertsResponse(
     val listings: List<NearbyListing>,
     @SerialName("checked_at") val checkedAt: String
 )
+
+/** Device token and current radius/location sent to the authenticated push-registration API. */
+@Serializable
+data class PushDeviceRequest(
+    val token: String,
+    val latitude: Double,
+    val longitude: Double,
+    @SerialName("radius_meters") val radiusMeters: Int
+)

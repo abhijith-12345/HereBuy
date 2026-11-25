@@ -113,3 +113,11 @@ class ListingAlertsResponse(BaseModel):
     """New live listings inside the configured alert radius and server query watermark."""
     listings: list[NearbyListing]
     checked_at: datetime
+
+
+class PushDeviceRegistration(BaseModel):
+    """Validates an FCM token and optional current nearby-alert settings."""
+    token: str = Field(min_length=20, max_length=512)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    radius_meters: int = Field(default=5_000, ge=1_000, le=100_000)

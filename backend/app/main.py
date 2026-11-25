@@ -14,7 +14,7 @@ from starlette.responses import JSONResponse, Response
 
 from app.config import API_PREFIX, validate_settings
 from app.database import Base, engine, prepare_development_schema
-from app.routers import auth, listings
+from app.routers import auth, listings, notifications
 from app import models  # noqa: F401 - registers SQLAlchemy models on Base
 
 api_logger = logging.getLogger("herebuy.api")
@@ -43,6 +43,7 @@ app = FastAPI(
 )
 app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(listings.router, prefix=API_PREFIX)
+app.include_router(notifications.router, prefix=API_PREFIX)
 
 
 @app.exception_handler(RequestValidationError)

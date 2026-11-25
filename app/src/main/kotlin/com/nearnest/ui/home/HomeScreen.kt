@@ -26,6 +26,7 @@ import com.nearnest.R
 import com.nearnest.data.remote.ApiUser
 import com.nearnest.data.remote.AuthRepository
 import com.nearnest.data.remote.ListingAlertRepository
+import com.nearnest.data.remote.PushDeviceRepository
 import com.nearnest.ui.map.MapScreen
 import com.nearnest.ui.map.PickupLocationPicker
 import com.nearnest.ui.profile.ProfileScreen
@@ -47,6 +48,7 @@ class HomeScreen(
 ) {
     private val mapScreen = MapScreen(activity)
     private val alertRepository = ListingAlertRepository(activity)
+    private val pushDeviceRepository = PushDeviceRepository()
     private val alertScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var showMapLabels = true
     private var hasStarted = false
@@ -61,6 +63,8 @@ class HomeScreen(
     private var alertPollingJob: Job? = null
     private var notificationBadgeUpdater: ((Int) -> Unit)? = null
     private var backAction: (() -> Boolean)? = null
+    private var pushToken: String? = null
+    private var registeredPushSettings: String? = null
 
     /** Builds and returns this component's Android view hierarchy. */
     fun createView(savedInstanceState: Bundle?): View {
@@ -403,6 +407,13 @@ class HomeScreen(
     /** Closes the topmost in-app screen and reports whether Back was consumed. */
     fun handleBackPressed(): Boolean = backAction?.invoke() ?: false
 
+    /** Supplies the current FCM token after Android notification permission is granted. */
+    fun setPushToken(token: String) {
+        pushToken = token
+        registeredPushSettings = null
+        restartAlertPolling()
+    }
+
     /** Handles the result of the device location permission prompt. */
     fun onRequestPermissionsResult(requestCode: Int, grantResults: IntArray) =
         mapScreen.onRequestPermissionsResult(requestCode, grantResults).also { restartAlertPolling() }
@@ -474,6 +485,15 @@ class HomeScreen(
                 val location = mapScreen.currentUserLocation()
                 if (location != null) {
                     try {
+                        pushToken?.let { deviceToken ->
+                            val settingsKey = "$deviceToken:${location.latitude}:${location.longitude}:${alertRepository.getRadiusKm()}"
+                            if (settingsKey != registeredPushSettings) {
+                                pushDeviceRepository.register(
+                                    token, deviceToken, location.latitude, location.longitude, alertRepository.getRadiusKm()
+                                )
+                                registeredPushSettings = settingsKey
+                            }
+                        }
                         val unread = alertRepository.checkForNewListings(token, location.latitude, location.longitude)
                         notificationBadgeUpdater?.invoke(unread)
                         notificationsScreen?.refresh(true)

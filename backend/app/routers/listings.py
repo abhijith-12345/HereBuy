@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import Listing, User
+from app.models import Listing, PushDevice, User
+from app.push_notifications import notify_nearby_users
 from app.schemas import ListingAlertsResponse, ListingCreate, ListingPublic, ListingUpdate, NearbyListing
 
 
@@ -139,6 +140,8 @@ def create_listing(
     db.add(listing)
     db.commit()
     db.refresh(listing)
+    devices = db.scalars(select(PushDevice)).all()
+    notify_nearby_users(listing, user, devices)
     return listing
 
 

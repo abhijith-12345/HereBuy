@@ -71,3 +71,16 @@ class Listing(Base):
     status: Mapped[str] = mapped_column(String(20), default="available", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+
+class PushDevice(Base):
+    """Stores an authenticated user's FCM token and last alert location/radius."""
+    __tablename__ = "push_devices"
+    __table_args__ = (Index("ix_push_devices_user_id", "user_id"),)
+
+    token: Mapped[str] = mapped_column(String(512), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    radius_meters: Mapped[int] = mapped_column(Integer, default=5_000, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)

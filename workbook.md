@@ -1,4 +1,4 @@
-# HereBuy Project Workbook
+﻿# HereBuy Project Workbook
 
 This workbook is the file-by-file guide to the Android client, FastAPI service, database migration, and build setup. Kotlin and Python source files also carry a short file guide and function documentation; consult the sections below to find the right place to change behavior.
 
@@ -123,3 +123,25 @@ These files are referenced by name from Android screens, manifests, or styles. T
 | `nearnest-blue.png`, `nearnest-rpg-blue.png`, `nearnest-rpg.png` | Raster brand assets used for project branding or future app artwork. |
 
 XML resource files have a short inline purpose comment. PNG, JAR, wrapper, and strict JSON assets cannot carry useful source comments; their roles are documented here instead. Local-only files such as `local.properties`, `backend/.env`, the SQLite database, logs, and downloaded installers are deliberately excluded from the project source map because they are machine-specific or generated.
+
+## Push notifications
+
+| File | Main functions and purpose |
+| --- | --- |
+| `app/src/main/kotlin/com/nearnest/notifications/HereBuyMessagingService.kt` | `HereBuyPush.initialize` reads optional Firebase config; `createChannel` sets up the Android channel; `show` displays an incoming system notification. `HereBuyMessagingService.onNewToken` saves refreshed FCM tokens; `onMessageReceived` displays background or foreground pushes. |
+| `app/src/main/kotlin/com/nearnest/MainActivity.kt` | `prepareProductNotifications` requests Android 13+ notification permission and starts FCM; `fetchPushToken` supplies the installation token to the signed-in home screen. |
+| `app/src/main/kotlin/com/nearnest/ui/home/HomeScreen.kt` | `setPushToken` receives the FCM token; `startAlertPolling` continues in-app alerts and registers the token with the current coordinates and radius. |
+| `app/src/main/kotlin/com/nearnest/data/remote/PushDeviceRepository.kt` | `register` sends the token and the user's current alert settings to the API. |
+| `app/src/main/kotlin/com/nearnest/data/remote/ApiModels.kt` | `PushDeviceRequest` defines the device registration request fields. |
+| `backend/app/models.py` | `PushDevice` persists token ownership, last alert coordinates, and radius. |
+| `backend/app/schemas.py` | `PushDeviceRegistration` validates device registration data. |
+| `backend/app/routers/notifications.py` | `register_device` saves a user's device settings; `unregister_device` removes that user's token. |
+| `backend/app/push_notifications.py` | `notify_nearby_users` filters registered devices by distance and sends FCM; `_messaging_module` initializes Firebase Admin when server credentials are configured. |
+| `backend/app/routers/listings.py` | `create_listing` persists a product, then triggers matching nearby push notifications. |
+| `backend/app/main.py` | Mounts the authenticated notifications API. |
+| `app/build.gradle.kts` | Declares Firebase Messaging and reads optional Firebase settings from ignored `local.properties`. |
+| `app/src/main/AndroidManifest.xml` | Declares notification permission and the Firebase message service. |
+
+## Firebase setup
+
+Add these values to ignored Android `local.properties`: `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID`, and `FIREBASE_SENDER_ID`. Store a Firebase Admin service-account JSON file outside Git and set its absolute path as `FIREBASE_CREDENTIALS_PATH` in ignored `backend/.env`. The package registered in Firebase must be `com.nearnest`.

@@ -33,3 +33,6 @@ backend/data/*.db-*
 *.zip
 *.7z
 *.blend1
+# Intermediate animation render frames (the app uses the encoded GIF/WebP assets).
+artwork/HereBuy_PNG_Sequence/
+artwork/HereBuy_PNG_Sequence_2s/
