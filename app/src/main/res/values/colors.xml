@@ -1,4 +1,4 @@
 <!-- Shared application color values; change these when updating the HereBuy color palette. -->
 <resources>
-    <color name="nearnest_icon_background">#087A35</color>
+    <color name="nearnest_icon_background">#E5F0E4</color>
 </resources>

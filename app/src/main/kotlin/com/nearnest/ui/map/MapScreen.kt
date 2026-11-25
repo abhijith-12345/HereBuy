@@ -4,6 +4,12 @@
 package com.nearnest.ui.map
 
 import android.app.Activity
+import android.app.AlertDialog
+import android.widget.LinearLayout
+import android.widget.Button
+import com.nearnest.data.remote.NearbyListing
+import java.text.NumberFormat
+import java.util.Locale
 import android.content.pm.PackageManager
 import android.location.Location
 import android.graphics.Color
@@ -60,7 +66,13 @@ class MapScreen(private val activity: Activity) {
     private val listingsScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var viewportJob: Job? = null
     private var cameraListenersAttached = false
-    private val listingMarkers = mutableListOf<Marker>()
+    private val listingMarkers = mutableMapOf<Marker, NearbyListing>()
+    private lateinit var mapRoot: FrameLayout
+    private var listingCard: View? = null
+    private val listingFormat = Locale.forLanguageTag("en-IN")
+    private val prices = NumberFormat.getCurrencyInstance(listingFormat).apply {
+        minimumFractionDigits = 0
+    }
     var onMapBearingChanged: ((Float) -> Unit)? = null
 
     /** Builds and returns this component's Android view hierarchy. */
@@ -68,6 +80,7 @@ class MapScreen(private val activity: Activity) {
         MapLibre.getInstance(activity)
 
         val root = FrameLayout(activity).apply { setBackgroundColor(Color.rgb(234, 244, 252)) }
+        mapRoot = root
         mapView = MapView(activity)
         mapView.onCreate(savedInstanceState)
         root.addView(mapView, FrameLayout.LayoutParams(-1, -1))
@@ -135,8 +148,20 @@ class MapScreen(private val activity: Activity) {
         mapView.getMapAsync { map ->
             this.map = map
             map.uiSettings.isCompassEnabled = false
+            map.setOnMarkerClickListener { marker ->
+                val listing = listingMarkers[marker]
+                if (listing == null) false else {
+                    showListingCard(listing, marker.position)
+                    true
+                }
+            }
             if (!cameraListenersAttached) {
+                map.addOnMapClickListener {
+                    dismissListingCard()
+                    false
+                }
                 map.addOnCameraMoveListener {
+                    dismissListingCard()
                     viewportJob?.cancel()
                     onMapBearingChanged?.invoke(map.cameraPosition.bearing.toFloat())
                 }
@@ -259,20 +284,13 @@ class MapScreen(private val activity: Activity) {
                     centerLongitude = center.longitude
                 )
                 val activeMap = map ?: return@launch
-                listingMarkers.forEach(activeMap::removeMarker)
+                listingMarkers.keys.forEach(activeMap::removeMarker)
                 listingMarkers.clear()
                 listings.forEach { listing ->
-                    val distanceKm = listing.distanceMeters / 1_000.0
-                    val details = buildList {
-                        if (listing.pickupArea.isNotBlank()) add(listing.pickupArea)
-                        add("%.1f km away".format(distanceKm))
-                    }.joinToString(" • ")
-                    listingMarkers += activeMap.addMarker(
-                        MarkerOptions()
-                            .position(LatLng(listing.latitude, listing.longitude))
-                            .title("${listing.title} · ${listing.price}")
-                            .snippet(details)
+                    val marker = activeMap.addMarker(
+                        MarkerOptions().position(LatLng(listing.latitude, listing.longitude))
                     )
+                    listingMarkers[marker] = listing
                 }
             } catch (error: Exception) {
                 if (error is kotlinx.coroutines.CancellationException) throw error
@@ -281,6 +299,91 @@ class MapScreen(private val activity: Activity) {
                 mapStatus.contentDescription = error.localizedMessage
             }
         }
+    }
+
+    private fun dismissListingCard() {
+        listingCard?.let(mapRoot::removeView)
+        listingCard = null
+    }
+
+    private fun showListingCard(listing: NearbyListing, position: LatLng) {
+        dismissListingCard()
+        val price = prices.format(listing.price)
+        val distance = NumberFormat.getNumberInstance(listingFormat).apply {
+            maximumFractionDigits = 1
+        }.format(listing.distanceMeters / 1_000.0) + " km away"
+        val details = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(TextView(activity).apply {
+                text = listing.title
+                textSize = 17f
+                setTextColor(Color.rgb(15, 72, 45))
+                typeface = Typeface.DEFAULT_BOLD
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+            addView(TextView(activity).apply {
+                text = price
+                textSize = 16f
+                setTextColor(Color.rgb(20, 122, 67))
+                typeface = Typeface.DEFAULT_BOLD
+            })
+            addView(TextView(activity).apply {
+                text = distance
+                textSize = 13f
+                setTextColor(Color.rgb(75, 97, 81))
+            })
+        }
+        val card = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(10), dp(6), dp(8), dp(6))
+            elevation = dp(8).toFloat()
+            isClickable = true
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(248, 252, 247))
+                cornerRadius = dp(12).toFloat()
+                setStroke(dp(1), Color.rgb(209, 226, 211))
+            }
+            addView(details, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(Button(activity).apply {
+                text = "Enquire"
+                isAllCaps = false
+                setTextColor(Color.WHITE)
+                minHeight = dp(48)
+                background = android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(0x33FFFFFF),
+                    GradientDrawable().apply {
+                        setColor(Color.rgb(20, 122, 67))
+                        cornerRadius = dp(24).toFloat()
+                    },
+                    null
+                )
+                setOnClickListener {
+                    val message = listOf(
+                        "$price · $distance", listing.pickupArea, listing.description,
+                        "Seller messaging is currently unavailable."
+                    ).filter { it.isNotBlank() }.joinToString("\n\n")
+                    AlertDialog.Builder(activity)
+                        .setTitle(listing.title)
+                        .setMessage(message)
+                        .setPositiveButton("Done", null)
+                        .show()
+                }
+            }, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
+        }
+        val pin = map?.projection?.toScreenLocation(position) ?: return
+        val width = minOf(dp(232), mapRoot.width - dp(16))
+        if (width <= 0) return
+        card.measure(
+            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        listingCard = card
+        mapRoot.addView(card, FrameLayout.LayoutParams(width, -2, Gravity.TOP or Gravity.LEFT).apply {
+            leftMargin = (pin.x.toInt() - width / 2).coerceIn(dp(8), mapRoot.width - width - dp(8))
+            topMargin = (pin.y.toInt() - dp(36) - card.measuredHeight).coerceAtLeast(dp(8))
+        })
     }
 
     /** Returns the current map center as a pickup coordinate when available. */

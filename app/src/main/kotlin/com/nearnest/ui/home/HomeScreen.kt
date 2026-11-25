@@ -270,8 +270,8 @@ class HomeScreen(
         mapControls += searchBar
 
         val mapSettingsButton = ImageButton(activity).apply {
-            contentDescription = "Map settings"
-            setImageResource(R.drawable.ic_nav_settings)
+            contentDescription = "Map filters"
+            setImageResource(R.drawable.ic_map_filter)
             imageTintList = ColorStateList.valueOf(Color.rgb(82, 97, 111))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL

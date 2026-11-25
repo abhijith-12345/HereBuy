@@ -123,25 +123,16 @@ class BottomNavBar(
             isFocusable = true
             setOnClickListener { onMyItemsClick() }
         }
-        val cartIcon = ImageView(context).apply {
-            setImageResource(R.drawable.ic_nav_cart)
-            imageTintList = ColorStateList.valueOf(Color.WHITE)
-            contentDescription = null
-        }
-        addButton.addView(cartIcon, LayoutParams(dp(if (compact) 24 else 28), dp(if (compact) 24 else 28), Gravity.CENTER))
-        addView(addButton, LayoutParams(dp(buttonSizeDp), dp(buttonSizeDp), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
-            topMargin = dp(2)
-        })
-        addView(TextView(context).apply {
-            text = "My items"
-            textSize = if (compact) 9f else 10f
+        addButton.addView(TextView(context).apply {
+            text = "+"
+            textSize = if (compact) 28f else 34f
             gravity = Gravity.CENTER
             includeFontPadding = false
-            typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            setTextColor(activeColor)
-            contentDescription = "My posted items"
-        }, LayoutParams(dp(60), dp(16), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
-            topMargin = dp(buttonSizeDp + 1)
+            setTextColor(Color.WHITE)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        addView(addButton, LayoutParams(dp(buttonSizeDp), dp(buttonSizeDp), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
+            topMargin = dp(2)
         })
 
         select(Destination.HOME)

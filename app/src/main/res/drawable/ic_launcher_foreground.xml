@@ -1,3 +1,3 @@
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:drawable="@drawable/herebuy_market_tote"
+    android:drawable="@drawable/herebuylogo"
     android:inset="8dp" />
