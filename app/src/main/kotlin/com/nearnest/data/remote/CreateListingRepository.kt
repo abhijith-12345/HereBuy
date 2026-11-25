@@ -23,7 +23,8 @@ class CreateListingRepository {
         price: Double,
         pickupArea: String,
         latitude: Double,
-        longitude: Double
+        longitude: Double,
+        photoUrls: List<String> = emptyList()
     ) {
         val response = ApiClientProvider.client.post("${ApiClientProvider.baseUrl}/listings") {
             bearerAuth(accessToken)
@@ -34,6 +35,7 @@ class CreateListingRepository {
                     description = description,
                     category = category,
                     price = price,
+                    photoUrls = photoUrls,
                     pickupArea = pickupArea,
                     latitude = latitude,
                     longitude = longitude

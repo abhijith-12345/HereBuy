@@ -4,6 +4,15 @@
 package com.nearnest.ui.sell
 
 import android.app.Activity
+import android.content.Intent
+import android.content.ActivityNotFoundException
+import android.graphics.Bitmap
+import android.provider.MediaStore
+import android.util.Base64
+import android.widget.ImageView
+import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
@@ -48,6 +57,10 @@ class SellItemScreen(
     private lateinit var statusText: TextView
     private lateinit var saveButton: Button
     private var pickupPoint: PickupPoint? = null
+    private val photos = mutableListOf<Bitmap>()
+    private lateinit var photoList: LinearLayout
+    private lateinit var addPhotoButton: Button
+    private var posting = false
 
     /** Builds and returns this component's Android view hierarchy. */
     fun createView(): View {
@@ -101,6 +114,17 @@ class SellItemScreen(
 
         priceInput = input("Price (₹)", InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
         form.addView(priceInput, fieldLayout(top = 10))
+        form.addView(sectionTitle("Photos"), LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(16)
+        })
+        addPhotoButton = Button(activity).apply {
+            isAllCaps = false
+            setOnClickListener { openCamera() }
+        }
+        form.addView(addPhotoButton, fieldLayout(top = 4))
+        photoList = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+        form.addView(photoList)
+        refreshPhotos()
 
         descriptionInput = input(
             "Description (condition, size, details)",
@@ -168,6 +192,59 @@ class SellItemScreen(
     /** Cancels this screen's coroutine scope and releases its pending work. */
     fun onDestroy() = scope.cancel()
 
+    @Suppress("DEPRECATION")
+    private fun openCamera() {
+        if (posting || photos.size >= MAX_PHOTOS) return
+        try {
+            activity.startActivityForResult(Intent(MediaStore.ACTION_IMAGE_CAPTURE), CAPTURE_PHOTO)
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(activity, "No camera app is available.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode != CAPTURE_PHOTO || resultCode != Activity.RESULT_OK || photos.size >= MAX_PHOTOS) return
+        val photo = data?.extras?.get("data") as? Bitmap
+        if (photo == null) {
+            Toast.makeText(activity, "The camera did not return a photo. Try again.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        photos.add(photo)
+        refreshPhotos()
+    }
+
+    private fun refreshPhotos() {
+        addPhotoButton.text = "Take photo (${photos.size}/$MAX_PHOTOS)"
+        addPhotoButton.isEnabled = !posting && photos.size < MAX_PHOTOS
+        photoList.removeAllViews()
+        photos.forEachIndexed { index, photo ->
+            val row = LinearLayout(activity).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                addView(ImageView(activity).apply {
+                    setImageBitmap(photo)
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    contentDescription = "Item photo ${index + 1}"
+                }, LinearLayout.LayoutParams(dp(64), dp(64)))
+                addView(Button(activity).apply {
+                    text = "Remove photo ${index + 1}"
+                    isAllCaps = false
+                    isEnabled = !posting
+                    setOnClickListener {
+                        photos.removeAt(index)
+                        refreshPhotos()
+                    }
+                })
+            }
+            photoList.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        }
+    }
+
+    private companion object {
+        const val MAX_PHOTOS = 4
+        const val CAPTURE_PHOTO = 7_303
+    }
+
     /** Validates form fields and submits the requested API operation. */
     private fun submit() {
         val title = titleInput.text.toString().trim()
@@ -187,6 +264,16 @@ class SellItemScreen(
         setLoading(true)
         scope.launch {
             try {
+                val attachedPhotos = photos.toList()
+                val photoUrls = withContext(Dispatchers.Default) {
+                    attachedPhotos.map { photo ->
+                        val output = ByteArrayOutputStream()
+                        check(photo.compress(Bitmap.CompressFormat.JPEG, 85, output)) {
+                            "Could not prepare a listing photo."
+                        }
+                        "data:image/jpeg;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+                    }
+                }
                 repository.createListing(
                     accessToken = accessToken,
                     title = title,
@@ -195,11 +282,13 @@ class SellItemScreen(
                     price = price,
                     pickupArea = area,
                     latitude = point.latitude,
-                    longitude = point.longitude
+                    longitude = point.longitude,
+                    photoUrls = photoUrls
                 )
                 Toast.makeText(activity, "Your item is now listed", Toast.LENGTH_SHORT).show()
                 onListingCreated()
             } catch (error: Exception) {
+                if (error is CancellationException) throw error
                 showError(error.localizedMessage ?: "Could not post the item. Please try again.")
                 setLoading(false)
             }
@@ -208,6 +297,8 @@ class SellItemScreen(
 
     /** Updates controls to show or clear an in-progress request. */
     private fun setLoading(loading: Boolean) {
+        posting = loading
+        refreshPhotos()
         saveButton.isEnabled = !loading
         saveButton.text = if (loading) "Posting…" else "Post item for sale"
         statusText.text = if (loading) "Posting your item…" else statusText.text

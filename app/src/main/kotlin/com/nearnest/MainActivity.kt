@@ -496,6 +496,12 @@ class MainActivity : Activity() {
         }
     }
 
+    @Deprecated("Used to receive the system camera result")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        homeScreen?.onActivityResult(requestCode, resultCode, data)
+    }
+
     private companion object {
         const val REQUEST_NOTIFICATIONS = 7_302
     }

@@ -347,7 +347,7 @@ class MapScreen(private val activity: Activity) {
             }
             addView(details, LinearLayout.LayoutParams(0, -2, 1f))
             addView(Button(activity).apply {
-                text = "Enquire"
+                text = "View"
                 isAllCaps = false
                 setTextColor(Color.WHITE)
                 minHeight = dp(48)
@@ -359,17 +359,7 @@ class MapScreen(private val activity: Activity) {
                     },
                     null
                 )
-                setOnClickListener {
-                    val message = listOf(
-                        "$price · $distance", listing.pickupArea, listing.description,
-                        "Seller messaging is currently unavailable."
-                    ).filter { it.isNotBlank() }.joinToString("\n\n")
-                    AlertDialog.Builder(activity)
-                        .setTitle(listing.title)
-                        .setMessage(message)
-                        .setPositiveButton("Done", null)
-                        .show()
-                }
+                setOnClickListener { showListingDetails(listing, price, distance) }
             }, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
         }
         val pin = map?.projection?.toScreenLocation(position) ?: return
@@ -384,6 +374,79 @@ class MapScreen(private val activity: Activity) {
             leftMargin = (pin.x.toInt() - width / 2).coerceIn(dp(8), mapRoot.width - width - dp(8))
             topMargin = (pin.y.toInt() - dp(36) - card.measuredHeight).coerceAtLeast(dp(8))
         })
+    }
+
+    private fun showListingDetails(listing: NearbyListing, price: String, distance: String) {
+        val content = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(12), dp(24), dp(20))
+        }
+        fun addText(value: String, size: Float, color: Int, bold: Boolean = false) {
+            if (value.isBlank()) return
+            content.addView(TextView(activity).apply {
+                text = value
+                textSize = size
+                setTextColor(color)
+                if (bold) typeface = Typeface.DEFAULT_BOLD
+                setPadding(0, 0, 0, dp(10))
+            })
+        }
+        addText(price, 24f, Color.rgb(20, 122, 67), bold = true)
+        addText(listOf(listing.category, distance, listing.pickupArea)
+            .filter { it.isNotBlank() }.joinToString(" · "), 14f, Color.rgb(75, 97, 81))
+        addText(listing.description.ifBlank { "No description provided." }, 16f, Color.rgb(35, 55, 45))
+        val photos = listing.photoUrls.mapIndexed { index, source ->
+            val preview = android.widget.ImageView(activity).apply {
+                scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                contentDescription = "Listing photo ${index + 1}"
+                setBackgroundColor(Color.rgb(235, 243, 234))
+            }
+            content.addView(preview, LinearLayout.LayoutParams(-1, dp(220)).apply {
+                bottomMargin = dp(10)
+            })
+            source to preview
+        }
+        val dialog = AlertDialog.Builder(activity)
+            .setTitle(listing.title)
+            .setView(android.widget.ScrollView(activity).apply { addView(content) })
+            .setNegativeButton("Close", null)
+            .setPositiveButton("Enquire", null)
+            .create()
+        dialog.show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).apply {
+            isEnabled = false
+            contentDescription = "Enquire. Seller messaging is unavailable."
+        }
+        val photoJob = listingsScope.launch {
+            for ((source, preview) in photos) {
+                val bitmap = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    runCatching {
+                        when {
+                            source.startsWith("data:image/jpeg;base64,") -> {
+                                val bytes = android.util.Base64.decode(source.substringAfter(','), android.util.Base64.DEFAULT)
+                                android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            }
+                            source.startsWith("https://", ignoreCase = true) -> {
+                                val connection = java.net.URI(source).toURL().openConnection().apply {
+                                    connectTimeout = 5000
+                                    readTimeout = 5000
+                                }
+                                connection.getInputStream().use { android.graphics.BitmapFactory.decodeStream(it) }
+                            }
+                            else -> null
+                        }
+                    }.getOrNull()
+                }
+                if (bitmap != null) {
+                    preview.setImageBitmap(bitmap)
+                } else {
+                    val index = content.indexOfChild(preview)
+                    content.removeView(preview)
+                    content.addView(TextView(activity).apply { text = "Photo unavailable" }, index)
+                }
+            }
+        }
+        dialog.setOnDismissListener { photoJob.cancel() }
     }
 
     /** Returns the current map center as a pickup coordinate when available. */

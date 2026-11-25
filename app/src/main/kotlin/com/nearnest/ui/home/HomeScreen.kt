@@ -67,6 +67,10 @@ class HomeScreen(
     private var registeredPushSettings: String? = null
 
     /** Builds and returns this component's Android view hierarchy. */
+    fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        activeSellScreen?.onActivityResult(requestCode, resultCode, data)
+    }
+
     fun createView(savedInstanceState: Bundle?): View {
         val root = FrameLayout(activity).apply {
             setBackgroundColor(Color.WHITE)
